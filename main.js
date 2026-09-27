@@ -1,11 +1,12 @@
 import { createModel } from "vosk-browser";
 
-
 // ======================================================
 // ELEMENTOS
 // ======================================================
 
 const botonMicrofono = document.getElementById("microfono");
+const botonMicrofonoFlotante = document.getElementById("microfonoFlotante");
+
 const botonCargar = document.getElementById("cargarAlumnos");
 const botonCopiar = document.getElementById("copiarNotas");
 
@@ -34,6 +35,7 @@ let recognizer = null;
 
 let mediaStream = null;
 let audioContext = null;
+
 let source = null;
 let processor = null;
 let gain = null;
@@ -43,6 +45,17 @@ let datosVolumen = null;
 let animacionVolumen = null;
 
 let escuchando = false;
+let procesando = false;
+let presionado = false;
+
+let audioPreparado = false;
+let preparandoAudio = false;
+
+let ultimoParcial = "";
+let ultimoResultado = "";
+
+let temporizadorGrabacion = null;
+let inicioGrabacion = 0;
 
 
 // ======================================================
@@ -131,71 +144,42 @@ function fonetizar(texto) {
 function levenshtein(a, b) {
 
     const matriz = Array.from(
-        {
-            length: b.length + 1
-        },
-        () =>
-            Array(a.length + 1)
+        { length: b.length + 1 },
+        () => Array(a.length + 1)
     );
 
-
-    for (
-        let i = 0;
-        i <= b.length;
-        i++
-    ) {
-
+    for (let i = 0; i <= b.length; i++) {
         matriz[i][0] = i;
     }
 
-
-    for (
-        let j = 0;
-        j <= a.length;
-        j++
-    ) {
-
+    for (let j = 0; j <= a.length; j++) {
         matriz[0][j] = j;
     }
 
+    for (let i = 1; i <= b.length; i++) {
 
-    for (
-        let i = 1;
-        i <= b.length;
-        i++
-    ) {
-
-        for (
-            let j = 1;
-            j <= a.length;
-            j++
-        ) {
+        for (let j = 1; j <= a.length; j++) {
 
             const costo =
                 b[i - 1] === a[j - 1]
                     ? 0
                     : 1;
 
-
             matriz[i][j] =
                 Math.min(
-
                     matriz[i - 1][j] + 1,
-
                     matriz[i][j - 1] + 1,
-
                     matriz[i - 1][j - 1] + costo
                 );
         }
     }
-
 
     return matriz[b.length][a.length];
 }
 
 
 // ======================================================
-// SIMILITUD GENERAL
+// SIMILITUD
 // ======================================================
 
 function similitud(a, b) {
@@ -203,22 +187,17 @@ function similitud(a, b) {
     a = fonetizar(a);
     b = fonetizar(b);
 
-
     if (!a || !b)
         return 0;
-
 
     if (a === b)
         return 1;
 
-
     const distancia =
         levenshtein(a, b);
 
-
     return Math.max(
         0,
-
         1 -
         distancia /
         Math.max(
@@ -230,7 +209,7 @@ function similitud(a, b) {
 
 
 // ======================================================
-// SIMILITUD DE PALABRAS
+// SIMILITUD PALABRA
 // ======================================================
 
 function similitudPalabra(a, b) {
@@ -238,18 +217,14 @@ function similitudPalabra(a, b) {
     a = fonetizar(a);
     b = fonetizar(b);
 
-
     if (!a || !b)
         return 0;
-
 
     if (a === b)
         return 1;
 
 
-    // ------------------------------------------
-    // UNA CONTIENE A LA OTRA
-    // ------------------------------------------
+    // Una contiene a la otra
 
     if (
         a.length >= 4 &&
@@ -264,13 +239,8 @@ function similitudPalabra(a, b) {
     }
 
 
-    // ------------------------------------------
-    // LEVENSHTEIN
-    // ------------------------------------------
-
     const distancia =
         levenshtein(a, b);
-
 
     const maximo =
         Math.max(
@@ -278,16 +248,13 @@ function similitudPalabra(a, b) {
             b.length
         );
 
-
     let score =
         1 -
         distancia /
         maximo;
 
 
-    // ------------------------------------------
-    // UN ERROR EN PALABRAS LARGAS
-    // ------------------------------------------
+    // Un error en palabra larga
 
     if (
         maximo >= 6 &&
@@ -302,9 +269,7 @@ function similitudPalabra(a, b) {
     }
 
 
-    // ------------------------------------------
-    // DOS ERRORES EN PALABRAS LARGAS
-    // ------------------------------------------
+    // Dos errores en palabras largas
 
     if (
         maximo >= 8 &&
@@ -319,21 +284,16 @@ function similitudPalabra(a, b) {
     }
 
 
-    // ------------------------------------------
-    // PREFIJO COMÚN
-    //
-    // ROLLET -> ROLEX
-    // ------------------------------------------
+    // Prefijo común
+    // Ejemplo: ROLLET -> ROLEX
 
     let inicioComun = 0;
-
 
     const limiteInicio =
         Math.min(
             a.length,
             b.length
         );
-
 
     for (
         let i = 0;
@@ -344,10 +304,8 @@ function similitudPalabra(a, b) {
         if (
             a[i] !== b[i]
         ) {
-
             break;
         }
-
 
         inicioComun++;
     }
@@ -361,19 +319,6 @@ function similitudPalabra(a, b) {
         );
 
 
-    /*
-        Si Vosk entendió bien una raíz
-        suficientemente larga pero inventó
-        la terminación, no castigamos tanto.
-
-        Ejemplo:
-
-        ROLLET
-        ROLEX
-
-        comparten "rol".
-    */
-
     if (
         inicioComun >= 3 &&
         proporcionInicio >= 0.60
@@ -381,9 +326,7 @@ function similitudPalabra(a, b) {
 
         score =
             Math.max(
-
                 score,
-
                 0.72 +
                 proporcionInicio * 0.18
             );
@@ -401,7 +344,7 @@ function similitudPalabra(a, b) {
 
 
 // ======================================================
-// GENERAR VARIANTES DE PALABRAS
+// VARIANTES
 // ======================================================
 
 function generarVariantesPalabras(palabras) {
@@ -409,10 +352,6 @@ function generarVariantesPalabras(palabras) {
     const variantes =
         new Set();
 
-
-    // ------------------------------------------
-    // PALABRAS ORIGINALES
-    // ------------------------------------------
 
     for (
         const palabra of palabras
@@ -424,11 +363,7 @@ function generarVariantesPalabras(palabras) {
     }
 
 
-    // ------------------------------------------
-    // UNIR DOS PALABRAS CONSECUTIVAS
-    //
     // berry no -> berryno
-    // ------------------------------------------
 
     for (
         let i = 0;
@@ -437,17 +372,13 @@ function generarVariantesPalabras(palabras) {
     ) {
 
         variantes.add(
-
             palabras[i] +
             palabras[i + 1]
-
         );
     }
 
 
-    // ------------------------------------------
-    // UNIR TRES
-    // ------------------------------------------
+    // Unir tres palabras
 
     for (
         let i = 0;
@@ -456,11 +387,9 @@ function generarVariantesPalabras(palabras) {
     ) {
 
         variantes.add(
-
             palabras[i] +
             palabras[i + 1] +
             palabras[i + 2]
-
         );
     }
 
@@ -472,7 +401,7 @@ function generarVariantesPalabras(palabras) {
 
 
 // ======================================================
-// COMPARAR CONJUNTO DE PALABRAS
+// COMPARAR CONJUNTO
 // ======================================================
 
 function compararConjuntoPalabras(
@@ -519,14 +448,11 @@ function compararConjuntoPalabras(
 
             mejor =
                 Math.max(
-
                     mejor,
-
                     similitudPalabra(
                         dicha,
                         objetivo
                     )
-
                 );
         }
 
@@ -548,26 +474,19 @@ function compararConjuntoPalabras(
 
 const PALABRAS_RUIDO =
     new Set([
-
         "el",
         "la",
-
         "los",
         "las",
-
         "de",
         "del",
-
         "a",
         "al",
-
         "un",
         "una",
-
         "y",
         "en",
         "es"
-
     ]);
 
 
@@ -601,21 +520,13 @@ function convertirNumero(texto) {
         una: 1,
 
         dos: 2,
-
         tres: 3,
-
         cuatro: 4,
-
         cinco: 5,
-
         seis: 6,
-
         siete: 7,
-
         ocho: 8,
-
         nueve: 9,
-
         diez: 10
 
     };
@@ -652,7 +563,7 @@ function convertirNumero(texto) {
 
 
 // ======================================================
-// CARGAR MODELO VOSK
+// CARGAR MODELO
 // ======================================================
 
 async function cargarModelo() {
@@ -665,8 +576,9 @@ async function cargarModelo() {
 
         model =
             await createModel(
-    import.meta.env.BASE_URL + "model.tar.gz"
-);
+                import.meta.env.BASE_URL +
+                "model.tar.gz"
+            );
 
 
         estadoModelo.textContent =
@@ -679,10 +591,7 @@ async function cargarModelo() {
 
     catch (error) {
 
-        console.error(
-            error
-        );
-
+        console.error(error);
 
         estadoModelo.textContent =
             "❌ No se pudo cargar el modelo";
@@ -691,11 +600,10 @@ async function cargarModelo() {
 
 
 // ======================================================
-// CARGAR DESDE PORTAPAPELES
+// PORTAPAPELES
 // ======================================================
 
 botonCargar.addEventListener(
-
     "click",
 
     async () => {
@@ -703,7 +611,8 @@ botonCargar.addEventListener(
         try {
 
             const texto =
-                await navigator.clipboard
+                await navigator
+                    .clipboard
                     .readText();
 
 
@@ -715,10 +624,7 @@ botonCargar.addEventListener(
 
         catch (error) {
 
-            console.error(
-                error
-            );
-
+            console.error(error);
 
             mostrarError(
                 "No pude leer el portapapeles."
@@ -740,35 +646,20 @@ function cargarAlumnos(texto) {
         );
 
 
-    const nuevos =
-        [];
+    const nuevos = [];
 
 
     for (
         const linea of lineas
     ) {
 
-        if (
-            !linea.trim()
-        ) {
-
+        if (!linea.trim())
             continue;
-        }
 
 
         let partes =
-            linea.split(
-                "\t"
-            );
+            linea.split("\t");
 
-
-        /*
-            Google Sheets normalmente
-            nos da TAB.
-
-            Como respaldo permitimos
-            múltiples espacios.
-        */
 
         if (
             partes.length < 2
@@ -794,7 +685,6 @@ function cargarAlumnos(texto) {
         const apellido =
             partes[0].trim();
 
-
         const nombre =
             partes[1].trim();
 
@@ -812,7 +702,6 @@ function cargarAlumnos(texto) {
 
             apellido,
             nombre,
-
             nota: ""
 
         });
@@ -844,6 +733,12 @@ function cargarAlumnos(texto) {
 
 
     actualizarBoton();
+
+
+    // Dejamos preparado el micrófono
+    // para que el dictado arranque rápido.
+
+    prepararAudio();
 }
 
 
@@ -864,10 +759,8 @@ function renderTabla() {
         tabla.style.display =
             "none";
 
-
         sinAlumnos.style.display =
             "block";
-
 
         actualizarContador();
 
@@ -877,7 +770,6 @@ function renderTabla() {
 
     tabla.style.display =
         "table";
-
 
     sinAlumnos.style.display =
         "none";
@@ -914,10 +806,8 @@ function renderTabla() {
             tdApellido.textContent =
                 alumno.apellido;
 
-
             tdNombre.textContent =
                 alumno.nombre;
-
 
             tdNota.className =
                 "nota";
@@ -932,18 +822,14 @@ function renderTabla() {
             input.className =
                 "inputNota";
 
-
             input.type =
                 "number";
-
 
             input.min =
                 "0";
 
-
             input.max =
                 "10";
-
 
             input.value =
                 alumno.nota;
@@ -965,7 +851,6 @@ function renderTabla() {
 
                         alumno.nota =
                             "";
-
                     }
 
                     else {
@@ -997,7 +882,6 @@ function renderTabla() {
                         index
                     );
 
-
                     actualizarContador();
                 }
             );
@@ -1012,11 +896,9 @@ function renderTabla() {
                 tdApellido
             );
 
-
             tr.appendChild(
                 tdNombre
             );
-
 
             tr.appendChild(
                 tdNota
@@ -1040,7 +922,7 @@ function renderTabla() {
 
 
 // ======================================================
-// ACTUALIZAR FILA
+// FILA
 // ======================================================
 
 function actualizarFila(index) {
@@ -1078,7 +960,6 @@ function actualizarFila(index) {
         fila.classList.add(
             "asignado"
         );
-
     }
 
     else {
@@ -1116,42 +997,387 @@ function actualizarContador() {
 
 
 // ======================================================
-// BOTÓN
+// BOTONES
 // ======================================================
 
 function actualizarBoton() {
 
-    botonMicrofono.disabled =
-
+    const deshabilitado =
         !model ||
         alumnos.length === 0;
+
+
+    botonMicrofono.disabled =
+        deshabilitado;
+
+
+    if (
+        botonMicrofonoFlotante
+    ) {
+
+        botonMicrofonoFlotante.disabled =
+            deshabilitado;
+    }
 }
 
 
 // ======================================================
-// MICROFONO
+// PREPARAR AUDIO UNA SOLA VEZ
 // ======================================================
 
-botonMicrofono.addEventListener(
+async function prepararAudio() {
 
-    "click",
+    if (
+        audioPreparado ||
+        preparandoAudio ||
+        !model ||
+        alumnos.length === 0
+    ) {
 
-    async () => {
-
-        if (
-            escuchando
-        ) {
-
-            detener();
-
-        }
-
-        else {
-
-            await iniciar();
-        }
+        return;
     }
-);
+
+
+    preparandoAudio =
+        true;
+
+
+    try {
+
+        mediaStream =
+            await navigator
+                .mediaDevices
+                .getUserMedia({
+
+                    video: false,
+
+                    audio: {
+
+                        echoCancellation:
+                            true,
+
+                        noiseSuppression:
+                            true,
+
+                        autoGainControl:
+                            true,
+
+                        channelCount:
+                            1
+                    }
+                });
+
+
+        audioContext =
+            new AudioContext({
+                sampleRate: 16000
+            });
+
+
+        await audioContext.resume();
+
+
+        console.log(
+            "AudioContext:",
+            audioContext.sampleRate,
+            "Hz"
+        );
+
+
+        source =
+            audioContext
+                .createMediaStreamSource(
+                    mediaStream
+                );
+
+
+        // ANALYSER
+
+        analyser =
+            audioContext
+                .createAnalyser();
+
+
+        analyser.fftSize =
+            256;
+
+
+        analyser.smoothingTimeConstant =
+            0.75;
+
+
+        datosVolumen =
+            new Uint8Array(
+                analyser.frequencyBinCount
+            );
+
+
+        source.connect(
+            analyser
+        );
+
+
+        // PROCESSOR
+
+        processor =
+            audioContext
+                .createScriptProcessor(
+                    4096,
+                    1,
+                    1
+                );
+
+
+        gain =
+            audioContext
+                .createGain();
+
+
+        gain.gain.value =
+            0;
+
+
+        source.connect(
+            processor
+        );
+
+
+        processor.connect(
+            gain
+        );
+
+
+        gain.connect(
+            audioContext.destination
+        );
+
+
+        processor.onaudioprocess =
+            evento => {
+
+                if (
+                    !escuchando ||
+                    !recognizer
+                ) {
+
+                    return;
+                }
+
+
+                try {
+
+                    recognizer
+                        .acceptWaveform(
+                            evento.inputBuffer
+                        );
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Error enviando audio:",
+                        error
+                    );
+                }
+            };
+
+
+        audioPreparado =
+            true;
+
+
+        console.log(
+            "✅ Micrófono preparado"
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Error preparando audio:",
+            error
+        );
+
+
+        audioPreparado =
+            false;
+
+
+        mostrarError(
+            "No pude preparar el micrófono."
+        );
+    }
+
+    finally {
+
+        preparandoAudio =
+            false;
+    }
+}
+
+
+// ======================================================
+// CREAR RECOGNIZER PARA CADA DICTADO
+// ======================================================
+
+function crearRecognizer() {
+
+    if (
+        !model ||
+        !audioContext
+    ) {
+
+        return false;
+    }
+
+
+    if (
+        recognizer
+    ) {
+
+        try {
+
+            recognizer.remove();
+
+        }
+
+        catch {}
+
+
+        recognizer =
+            null;
+    }
+
+
+    ultimoParcial =
+        "";
+
+    ultimoResultado =
+        "";
+
+
+    recognizer =
+        new model.KaldiRecognizer(
+            audioContext.sampleRate
+        );
+
+
+    // ==========================================
+    // PARCIAL
+    // ==========================================
+
+    recognizer.on(
+
+        "partialresult",
+
+        mensaje => {
+
+            if (
+                !escuchando
+            ) {
+
+                return;
+            }
+
+
+            const parcial =
+                mensaje
+                    ?.result
+                    ?.partial
+                || "";
+
+
+            if (
+                !parcial.trim()
+            ) {
+
+                return;
+            }
+
+
+            // MUY IMPORTANTE:
+            // guardamos lo que estamos viendo.
+
+            ultimoParcial =
+                parcial.trim();
+
+
+            dictado.textContent =
+                ultimoParcial;
+
+
+            if (
+                miniTexto
+            ) {
+
+                miniTexto.textContent =
+                    "🎙️ “" +
+                    ultimoParcial +
+                    "”";
+            }
+        }
+    );
+
+
+    // ==========================================
+    // RESULTADO
+    // ==========================================
+
+    recognizer.on(
+
+        "result",
+
+        mensaje => {
+
+            const texto =
+                mensaje
+                    ?.result
+                    ?.text
+                || "";
+
+
+            if (
+                !texto.trim()
+            ) {
+
+                return;
+            }
+
+
+            ultimoResultado =
+                texto.trim();
+
+
+            // Mientras seguimos apretando,
+            // solamente lo guardamos.
+            // Procesamos al SOLTAR.
+
+            if (
+                escuchando
+            ) {
+
+                dictado.textContent =
+                    ultimoResultado;
+
+
+                if (
+                    miniTexto
+                ) {
+
+                    miniTexto.textContent =
+                        "🎙️ “" +
+                        ultimoResultado +
+                        "”";
+                }
+            }
+        }
+    );
+
+
+    return true;
+}
 
 
 // ======================================================
@@ -1161,36 +1387,21 @@ botonMicrofono.addEventListener(
 function iniciarMedidorVolumen() {
 
     if (
-        !audioContext ||
-        !source
+        !analyser
     ) {
 
         return;
     }
 
 
-    analyser =
-        audioContext
-            .createAnalyser();
+    if (
+        animacionVolumen
+    ) {
 
-
-    analyser.fftSize =
-        256;
-
-
-    analyser.smoothingTimeConstant =
-        0.75;
-
-
-    datosVolumen =
-        new Uint8Array(
-            analyser.frequencyBinCount
+        cancelAnimationFrame(
+            animacionVolumen
         );
-
-
-    source.connect(
-        analyser
-    );
+    }
 
 
     function actualizar() {
@@ -1199,6 +1410,27 @@ function iniciarMedidorVolumen() {
             !escuchando ||
             !analyser
         ) {
+
+            botonMicrofono
+                .style
+                .setProperty(
+                    "--nivel",
+                    0
+                );
+
+
+            if (
+                botonMicrofonoFlotante
+            ) {
+
+                botonMicrofonoFlotante
+                    .style
+                    .setProperty(
+                        "--nivel",
+                        0
+                    );
+            }
+
 
             return;
         }
@@ -1235,9 +1467,7 @@ function iniciarMedidorVolumen() {
 
         nivel =
             Math.max(
-
                 0,
-
                 Math.min(
                     nivel,
                     1
@@ -1253,6 +1483,19 @@ function iniciarMedidorVolumen() {
             );
 
 
+        if (
+            botonMicrofonoFlotante
+        ) {
+
+            botonMicrofonoFlotante
+                .style
+                .setProperty(
+                    "--nivel",
+                    nivel
+                );
+        }
+
+
         animacionVolumen =
             requestAnimationFrame(
                 actualizar
@@ -1265,224 +1508,180 @@ function iniciarMedidorVolumen() {
 
 
 // ======================================================
-// INICIAR VOSK
+// TEMPORIZADOR
 // ======================================================
 
-async function iniciar() {
+function iniciarTemporizador() {
 
-    try {
-
-        mediaStream =
-            await navigator
-                .mediaDevices
-                .getUserMedia({
-
-                    video: false,
-
-                    audio: {
-
-                        echoCancellation:
-                            true,
-
-                        noiseSuppression:
-                            true,
-
-                        autoGainControl:
-                            true,
-
-                        channelCount:
-                            1
-                    }
-                });
+    inicioGrabacion =
+        Date.now();
 
 
-        audioContext =
-            new AudioContext({
+    if (
+        temporizadorGrabacion
+    ) {
 
-                sampleRate:
-                    16000
-
-            });
-
-
-        await audioContext.resume();
+        clearInterval(
+            temporizadorGrabacion
+        );
+    }
 
 
-        recognizer =
-            new model.KaldiRecognizer(
-                audioContext.sampleRate
+    function actualizar() {
+
+        if (
+            !escuchando
+        ) {
+
+            return;
+        }
+
+
+        const segundos =
+            Math.floor(
+                (
+                    Date.now() -
+                    inicioGrabacion
+                ) /
+                1000
             );
 
 
-        // ==========================================
-        // RESULTADO PARCIAL
-        // ==========================================
-
-        recognizer.on(
-
-            "partialresult",
-
-            mensaje => {
-
-                const parcial =
-                    mensaje
-                        ?.result
-                        ?.partial
-                    || "";
+        const minutos =
+            Math.floor(
+                segundos / 60
+            );
 
 
-                if (
-                    parcial.trim()
-                ) {
-
-                    dictado.textContent =
-                        parcial;
+        const resto =
+            segundos % 60;
 
 
-                    if (
-                        miniTexto
-                    ) {
+        const tiempo =
 
-                        miniTexto.textContent =
-                            "“" +
-                            parcial +
-                            "”";
-                    }
-                }
-            }
-        );
+            String(minutos)
+                .padStart(
+                    2,
+                    "0"
+                )
 
+            +
 
-        // ==========================================
-        // RESULTADO FINAL
-        // ==========================================
+            ":"
 
-        recognizer.on(
+            +
 
-            "result",
-
-            mensaje => {
-
-                const texto =
-                    mensaje
-                        ?.result
-                        ?.text
-                    || "";
-
-
-                if (
-                    !texto.trim()
-                ) {
-
-                    return;
-                }
-
-
-                dictado.textContent =
-                    texto;
-
-
-                procesarDictado(
-                    texto
-                );
-            }
-        );
-
-
-        // ==========================================
-        // AUDIO
-        // ==========================================
-
-        source =
-            audioContext
-                .createMediaStreamSource(
-                    mediaStream
+            String(resto)
+                .padStart(
+                    2,
+                    "0"
                 );
 
 
-        processor =
-            audioContext
-                .createScriptProcessor(
-                    4096,
-                    1,
-                    1
-                );
+        resultadoFinal.textContent =
+            "🔴 " +
+            tiempo +
+            " · Grabando";
+    }
 
 
-        processor.onaudioprocess =
-            evento => {
-
-                if (
-                    !escuchando ||
-                    !recognizer
-                ) {
-
-                    return;
-                }
+    actualizar();
 
 
-                try {
-
-                    recognizer
-                        .acceptWaveform(
-                            evento.inputBuffer
-                        );
-
-                }
-
-                catch (error) {
-
-                    console.error(
-                        "Error enviando audio:",
-                        error
-                    );
-                }
-            };
-
-
-        gain =
-            audioContext
-                .createGain();
-
-
-        gain.gain.value =
-            0;
-
-
-        source.connect(
-            processor
+    temporizadorGrabacion =
+        setInterval(
+            actualizar,
+            250
         );
+}
 
 
-        processor.connect(
-            gain
-        );
+// ======================================================
+// EMPEZAR DICTADO
+// ======================================================
+
+async function empezarDictado() {
+
+    if (
+        presionado ||
+        escuchando ||
+        procesando ||
+        botonMicrofono.disabled
+    ) {
+
+        return;
+    }
 
 
-        gain.connect(
-            audioContext.destination
-        );
+    presionado =
+        true;
 
 
-        // IMPORTANTE:
-        // primero escuchando = true
+    try {
+
+        if (
+            !audioPreparado
+        ) {
+
+            dictado.textContent =
+                "Preparando micrófono...";
+
+
+            await prepararAudio();
+        }
+
+
+        // El usuario pudo soltar mientras
+        // aparecía el permiso de Android.
+
+        if (
+            !presionado
+        ) {
+
+            return;
+        }
+
+
+        if (
+            !audioPreparado
+        ) {
+
+            presionado =
+                false;
+
+            return;
+        }
+
+
+        if (
+            audioContext.state ===
+            "suspended"
+        ) {
+
+            await audioContext.resume();
+        }
+
+
+        if (
+            !crearRecognizer()
+        ) {
+
+            presionado =
+                false;
+
+            return;
+        }
+
 
         escuchando =
             true;
 
 
-        iniciarMedidorVolumen();
+        ultimoParcial =
+            "";
 
-
-        botonMicrofono
-            .classList
-            .add(
-                "activo"
-            );
-
-
-        botonMicrofono.textContent =
-            "■";
+        ultimoResultado =
+            "";
 
 
         panelResultado
@@ -1493,12 +1692,39 @@ async function iniciar() {
             );
 
 
+        botonMicrofono
+            .classList
+            .add(
+                "activo"
+            );
+
+
+        botonMicrofono.textContent =
+            "🎙️";
+
+
+        if (
+            botonMicrofonoFlotante
+        ) {
+
+            botonMicrofonoFlotante
+                .classList
+                .add(
+                    "activo"
+                );
+
+
+            botonMicrofonoFlotante.textContent =
+                "🎙️";
+        }
+
+
         dictado.textContent =
             "Escuchando...";
 
 
         resultadoFinal.textContent =
-            "Decí, por ejemplo: Berrino ocho";
+            "🔴 00:00 · Grabando";
 
 
         if (
@@ -1506,9 +1732,13 @@ async function iniciar() {
         ) {
 
             miniTexto.textContent =
-                "Escuchando...";
+                "🎙️ Escuchando...";
         }
 
+
+        iniciarMedidorVolumen();
+
+        iniciarTemporizador();
 
         actualizarMiniEstado();
 
@@ -1517,33 +1747,94 @@ async function iniciar() {
     catch (error) {
 
         console.error(
+            "Error iniciando dictado:",
             error
         );
 
 
+        presionado =
+            false;
+
+        escuchando =
+            false;
+
+
         mostrarError(
-            "No pude iniciar el micrófono."
+            "No pude iniciar el dictado."
         );
-
-
-        detener();
     }
 }
 
 
 // ======================================================
-// DETENER
+// TERMINAR DICTADO
 // ======================================================
 
-function detener() {
+async function terminarDictado() {
+
+    presionado =
+        false;
+
+
+    if (
+        !escuchando ||
+        procesando
+    ) {
+
+        return;
+    }
+
+
+    /*
+        IMPORTANTE:
+
+        Guardamos el último texto ANTES
+        de cambiar estados o eliminar
+        recognizer.
+
+        Si la pantalla decía:
+
+        "Castro cuatro"
+
+        entonces eso mismo se procesa.
+    */
+
+    const textoCapturado =
+        (
+            ultimoResultado ||
+            ultimoParcial ||
+            dictado.textContent ||
+            ""
+        ).trim();
+
 
     escuchando =
         false;
 
+    procesando =
+        true;
 
-    // ------------------------------------------
-    // ANIMACIÓN VOLUMEN
-    // ------------------------------------------
+
+    // ==========================================
+    // TEMPORIZADOR
+    // ==========================================
+
+    if (
+        temporizadorGrabacion
+    ) {
+
+        clearInterval(
+            temporizadorGrabacion
+        );
+
+        temporizadorGrabacion =
+            null;
+    }
+
+
+    // ==========================================
+    // VOLUMEN
+    // ==========================================
 
     if (
         animacionVolumen
@@ -1553,26 +1844,7 @@ function detener() {
             animacionVolumen
         );
 
-
         animacionVolumen =
-            null;
-    }
-
-
-    if (
-        analyser
-    ) {
-
-        try {
-
-            analyser.disconnect();
-
-        }
-
-        catch {}
-
-
-        analyser =
             null;
     }
 
@@ -1585,151 +1857,22 @@ function detener() {
         );
 
 
-    // ------------------------------------------
-    // PROCESSOR
-    // ------------------------------------------
-
     if (
-        processor
+        botonMicrofonoFlotante
     ) {
 
-        processor.onaudioprocess =
-            null;
-
-
-        try {
-
-            processor.disconnect();
-
-        }
-
-        catch {}
-
-
-        processor =
-            null;
-    }
-
-
-    // ------------------------------------------
-    // SOURCE
-    // ------------------------------------------
-
-    if (
-        source
-    ) {
-
-        try {
-
-            source.disconnect();
-
-        }
-
-        catch {}
-
-
-        source =
-            null;
-    }
-
-
-    // ------------------------------------------
-    // GAIN
-    // ------------------------------------------
-
-    if (
-        gain
-    ) {
-
-        try {
-
-            gain.disconnect();
-
-        }
-
-        catch {}
-
-
-        gain =
-            null;
-    }
-
-
-    // ------------------------------------------
-    // STREAM
-    // ------------------------------------------
-
-    if (
-        mediaStream
-    ) {
-
-        mediaStream
-            .getTracks()
-            .forEach(
-
-                track => {
-
-                    try {
-
-                        track.stop();
-
-                    }
-
-                    catch {}
-
-                }
-
+        botonMicrofonoFlotante
+            .style
+            .setProperty(
+                "--nivel",
+                0
             );
-
-
-        mediaStream =
-            null;
     }
 
 
-    // ------------------------------------------
-    // AUDIO CONTEXT
-    // ------------------------------------------
-
-    if (
-        audioContext
-    ) {
-
-        try {
-
-            audioContext.close();
-
-        }
-
-        catch {}
-
-
-        audioContext =
-            null;
-    }
-
-
-    // ------------------------------------------
-    // RECOGNIZER
-    // ------------------------------------------
-
-    if (
-        recognizer
-    ) {
-
-        try {
-
-            recognizer.remove();
-
-        }
-
-        catch {}
-
-
-        recognizer =
-            null;
-    }
-
+    // ==========================================
+    // BOTONES
+    // ==========================================
 
     botonMicrofono
         .classList
@@ -1743,15 +1886,264 @@ function detener() {
 
 
     if (
-        miniEstado
+        botonMicrofonoFlotante
     ) {
 
-        miniEstado
+        botonMicrofonoFlotante
             .classList
             .remove(
-                "visible"
+                "activo"
             );
+
+
+        botonMicrofonoFlotante.textContent =
+            "🎤";
     }
+
+
+    resultadoFinal.textContent =
+        "⏳ Procesando...";
+
+
+    if (
+        miniTexto
+    ) {
+
+        miniTexto.textContent =
+            "⏳ Procesando...";
+    }
+
+
+    /*
+        Esperamos apenas 120 ms.
+
+        NO esperamos un nuevo resultado de Vosk,
+        porque ya tenemos guardado el parcial
+        que el usuario vio en pantalla.
+    */
+
+    await new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                120
+            )
+    );
+
+
+    console.log(
+        "Último parcial:",
+        ultimoParcial
+    );
+
+    console.log(
+        "Último resultado:",
+        ultimoResultado
+    );
+
+    console.log(
+        "Texto a procesar:",
+        textoCapturado
+    );
+
+
+    // ==========================================
+    // PROCESAR
+    // ==========================================
+
+    if (
+        textoCapturado &&
+        textoCapturado !==
+            "Escuchando..."
+    ) {
+
+        dictado.textContent =
+            textoCapturado;
+
+
+        procesarDictado(
+            textoCapturado
+        );
+
+    }
+
+    else {
+
+        mostrarError(
+            "No reconocí lo que dijiste."
+        );
+    }
+
+
+    // ==========================================
+    // ELIMINAR SOLO EL RECOGNIZER
+    //
+    // El micrófono y AudioContext quedan vivos.
+    // ==========================================
+
+    if (
+        recognizer
+    ) {
+
+        try {
+
+            recognizer.remove();
+
+        }
+
+        catch (error) {
+
+            console.warn(
+                "No se pudo eliminar recognizer:",
+                error
+            );
+        }
+
+
+        recognizer =
+            null;
+    }
+
+
+    procesando =
+        false;
+
+
+    actualizarMiniEstado();
+}
+
+
+// ======================================================
+// POINTER EVENTS
+// ======================================================
+
+function configurarBotonMantener(
+    boton
+) {
+
+    if (
+        !boton
+    ) {
+
+        return;
+    }
+
+
+    boton.addEventListener(
+
+        "pointerdown",
+
+        async evento => {
+
+            if (
+                botonMicrofono.disabled ||
+                procesando
+            ) {
+
+                return;
+            }
+
+
+            evento.preventDefault();
+
+
+            try {
+
+                boton.setPointerCapture(
+                    evento.pointerId
+                );
+
+            }
+
+            catch {}
+
+
+            await empezarDictado();
+        }
+    );
+
+
+    boton.addEventListener(
+
+        "pointerup",
+
+        evento => {
+
+            evento.preventDefault();
+
+            terminarDictado();
+        }
+    );
+
+
+    boton.addEventListener(
+
+        "pointercancel",
+
+        () => {
+
+            terminarDictado();
+        }
+    );
+
+
+    boton.addEventListener(
+
+        "contextmenu",
+
+        evento => {
+
+            evento.preventDefault();
+        }
+    );
+}
+
+
+configurarBotonMantener(
+    botonMicrofono
+);
+
+
+configurarBotonMantener(
+    botonMicrofonoFlotante
+);
+
+
+// ======================================================
+// BOTÓN FLOTANTE
+// ======================================================
+
+if (
+    botonMicrofonoFlotante
+) {
+
+    const observadorMicrofono =
+        new IntersectionObserver(
+
+            entradas => {
+
+                const visible =
+                    entradas[0]
+                        .isIntersecting;
+
+
+                botonMicrofonoFlotante
+                    .classList
+                    .toggle(
+                        "visible",
+                        !visible
+                    );
+            },
+
+            {
+                threshold: 0.2
+            }
+        );
+
+
+    observadorMicrofono.observe(
+        botonMicrofono
+    );
 }
 
 
@@ -1786,15 +2178,14 @@ function procesarDictado(texto) {
     let nota =
         NaN;
 
-
     let indiceNota =
         -1;
 
 
     /*
-        Buscamos desde el final porque normalmente
-        decimos:
+        Buscamos desde el final.
 
+        Castro cuatro
         Berrino tres
         Rollet cuatro
         Banic Baena ocho
@@ -1824,10 +2215,8 @@ function procesarDictado(texto) {
             nota =
                 posible;
 
-
             indiceNota =
                 i;
-
 
             break;
         }
@@ -1849,7 +2238,7 @@ function procesarDictado(texto) {
 
 
     // ==================================================
-    // SACAR LA NOTA
+    // SACAR NOTA
     // ==================================================
 
     palabras.splice(
@@ -1875,7 +2264,7 @@ function procesarDictado(texto) {
 
 
     // ==================================================
-    // LIMPIAR PALABRAS
+    // LIMPIAR
     // ==================================================
 
     const palabrasDichas =
@@ -1884,7 +2273,9 @@ function procesarDictado(texto) {
             normalizar(
                 nombreDicho
             )
+
                 .split(/\s+/)
+
                 .filter(Boolean)
 
         );
@@ -1903,7 +2294,7 @@ function procesarDictado(texto) {
 
 
     // ==================================================
-    // BUSCAR ALUMNO
+    // CANDIDATOS
     // ==================================================
 
     const candidatos =
@@ -1935,37 +2326,19 @@ function procesarDictado(texto) {
                         .filter(Boolean);
 
 
-                // --------------------------------------
-                // APELLIDO
-                // --------------------------------------
-
                 const scoreApellido =
                     compararConjuntoPalabras(
-
                         palabrasDichas,
-
                         palabrasApellido
-
                     );
 
-
-                // --------------------------------------
-                // NOMBRE
-                // --------------------------------------
 
                 const scoreNombre =
                     compararConjuntoPalabras(
-
                         palabrasDichas,
-
                         palabrasNombre
-
                     );
 
-
-                // --------------------------------------
-                // VARIANTES
-                // --------------------------------------
 
                 const variantesDichas =
                     generarVariantesPalabras(
@@ -1978,10 +2351,6 @@ function procesarDictado(texto) {
                         palabrasApellido
                     );
 
-
-                // --------------------------------------
-                // MEJOR APELLIDO INDIVIDUAL
-                // --------------------------------------
 
                 let mejorApellidoIndividual =
                     0;
@@ -1998,6 +2367,7 @@ function procesarDictado(texto) {
                     ) {
 
                         mejorApellidoIndividual =
+
                             Math.max(
 
                                 mejorApellidoIndividual,
@@ -2006,15 +2376,12 @@ function procesarDictado(texto) {
                                     dicha,
                                     ap
                                 )
-
                             );
                     }
                 }
 
 
-                // --------------------------------------
                 // BONUS EXACTO
-                // --------------------------------------
 
                 let bonusExacto =
                     0;
@@ -2045,66 +2412,44 @@ function procesarDictado(texto) {
                 }
 
 
-                // --------------------------------------
-                // APELLIDO COMPLETO
-                // --------------------------------------
-
                 const scoreApellidoCompleto =
                     similitud(
 
-                        palabrasDichas.join(" "),
+                        palabrasDichas
+                            .join(" "),
 
                         apellido
-
                     );
 
 
                 /*
-                    El apellido representa prácticamente
-                    toda la decisión.
-
-                    60% coincidencia general del apellido
-                    30% mejor coincidencia individual
-                     5% nombre
-                     5% apellido completo
-
-                    Esto evita casos como:
-
-                    ROLEX
-
-                    donde ROCHA ganaba sobre ROLLET
-                    solamente porque "Felipe" producía
-                    accidentalmente mejor score.
+                    Apellido domina la decisión.
                 */
 
                 let score =
 
-                    scoreApellido
-                        * 0.60
+                    scoreApellido *
+                    0.60
 
                     +
 
-                    mejorApellidoIndividual
-                        * 0.30
+                    mejorApellidoIndividual *
+                    0.30
 
                     +
 
-                    scoreNombre
-                        * 0.05
+                    scoreNombre *
+                    0.05
 
                     +
 
-                    scoreApellidoCompleto
-                        * 0.05
+                    scoreApellidoCompleto *
+                    0.05
 
                     +
 
                     bonusExacto;
 
-
-                // --------------------------------------
-                // APELLIDO MUY FUERTE
-                // --------------------------------------
 
                 const fuerzaApellido =
                     Math.max(
@@ -2112,12 +2457,12 @@ function procesarDictado(texto) {
                         scoreApellido,
 
                         mejorApellidoIndividual
-
                     );
 
 
                 if (
-                    fuerzaApellido >= 0.88
+                    fuerzaApellido >=
+                    0.88
                 ) {
 
                     score =
@@ -2133,7 +2478,6 @@ function procesarDictado(texto) {
                             )
 
                             * 0.5
-
                         );
                 }
 
@@ -2174,13 +2518,11 @@ function procesarDictado(texto) {
         (a, b) =>
             b.score -
             a.score
-
     );
 
 
     const primero =
         candidatos[0];
-
 
     const segundo =
         candidatos[1];
@@ -2231,13 +2573,16 @@ function procesarDictado(texto) {
     console.table(
 
         candidatos
-            .slice(0, 5)
+            .slice(
+                0,
+                5
+            )
+
             .map(
 
                 c => ({
 
                     alumno:
-
                         c.alumno.apellido +
                         " " +
                         c.alumno.nombre,
@@ -2257,11 +2602,8 @@ function procesarDictado(texto) {
                     mejorApellido:
                         c.mejorApellidoIndividual
                             .toFixed(3)
-
                 })
-
             )
-
     );
 
 
@@ -2282,31 +2624,26 @@ function procesarDictado(texto) {
             : 1;
 
 
-    // ==================================================
-    // MUY POCA CONFIANZA
-    // ==================================================
-
     if (
         confianza < 0.58 &&
-        primero.mejorApellidoIndividual < 0.82
+        primero.mejorApellidoIndividual <
+            0.82
     ) {
 
         mostrarError(
 
             "No estoy seguro del alumno. " +
-            "Entendí: “" +
-            nombreDicho +
-            "”"
 
+            "Entendí: “" +
+
+            nombreDicho +
+
+            "”"
         );
 
         return;
     }
 
-
-    // ==================================================
-    // DOS CANDIDATOS MUY PARECIDOS
-    // ==================================================
 
     if (
         segundo &&
@@ -2329,7 +2666,6 @@ function procesarDictado(texto) {
             segundo.alumno.nombre +
 
             "?"
-
         );
 
         return;
@@ -2466,7 +2802,9 @@ function asignarNota(
 // ERROR
 // ======================================================
 
-function mostrarError(mensaje) {
+function mostrarError(
+    mensaje
+) {
 
     panelResultado
         .classList
@@ -2560,15 +2898,9 @@ botonCopiar.addEventListener(
         }
 
 
-        /*
-            NO FILTRAMOS VACÍOS.
-
-            Si el alumno 5 no tiene nota,
-            la línea 5 queda vacía.
-        */
-
         const texto =
             alumnos
+
                 .map(
 
                     alumno =>
@@ -2580,6 +2912,7 @@ botonCopiar.addEventListener(
                             : alumno.nota
 
                 )
+
                 .join("\n");
 
 
@@ -2659,7 +2992,6 @@ function actualizarMiniEstado() {
                 "visible"
             );
 
-
         return;
     }
 
@@ -2674,7 +3006,7 @@ function actualizarMiniEstado() {
         rect.bottom < 80 ||
 
         rect.top >
-            window.innerHeight - 80;
+        window.innerHeight - 80;
 
 
     miniEstado
@@ -2699,7 +3031,26 @@ window.addEventListener(
     {
         passive: true
     }
+);
 
+
+// ======================================================
+// SEGURIDAD AL PERDER FOCO
+// ======================================================
+
+window.addEventListener(
+
+    "blur",
+
+    () => {
+
+        if (
+            escuchando
+        ) {
+
+            terminarDictado();
+        }
+    }
 );
 
 

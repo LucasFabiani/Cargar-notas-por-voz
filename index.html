@@ -572,6 +572,95 @@ td.nota {
     }
 
 }
+
+.microfono-flotante {
+    position: fixed;
+    right: 20px;
+    bottom: 24px;
+
+    width: 64px;
+    height: 64px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: #202124;
+    color: white;
+
+    font-size: 27px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    z-index: 9999;
+
+    box-shadow:
+        0 4px 14px rgba(0,0,0,.25);
+
+    /* Oculto mientras el botón grande esté visible */
+    opacity: 0;
+    pointer-events: none;
+
+    transform: translateY(15px) scale(.9);
+
+    transition:
+        opacity .2s ease,
+        transform .2s ease,
+        background .2s ease;
+
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+
+/* Cuando bajamos */
+
+.microfono-flotante.visible {
+    opacity: 1;
+    pointer-events: auto;
+
+    transform:
+        translateY(0)
+        scale(calc(1 + var(--nivel, 0) * .15));
+}
+
+
+/* Grabando */
+
+.microfono-flotante.activo {
+    background: #d93025;
+
+    box-shadow:
+        0 0 0 calc(5px + var(--nivel, 0) * 14px)
+        rgba(217,48,37,.15),
+        0 5px 18px rgba(0,0,0,.3);
+}
+
+
+/* Celular */
+
+@media (max-width: 600px) {
+
+    .microfono-flotante {
+        width: 58px;
+        height: 58px;
+
+        right: 16px;
+
+        /* respeta la zona inferior de Android/iPhone */
+        bottom: calc(
+            18px + env(safe-area-inset-bottom)
+        );
+
+        font-size: 25px;
+    }
+
+}
 </style>
 
 </head>
@@ -587,6 +676,10 @@ td.nota {
         Escuchando...
     </div>
 </div>
+<button id="microfonoFlotante" class="microfono-flotante" aria-label="Mantener pulsado para dictar">
+    🎤
+</button>
+
 <body>
 
 <div class="contenedor">

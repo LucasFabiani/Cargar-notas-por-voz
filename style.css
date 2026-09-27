@@ -741,8 +741,6 @@ td.nota {
     font:
         inherit;
 
-    font-weight:
-        650;
 
     transition:
         border .15s ease,
@@ -1314,5 +1312,53 @@ td.nota {
     #miniMicrofono {
         display:
             none;
+    }
+}
+
+.inputComentario {
+    width: 100%;
+    min-width: 190px;
+
+    padding: 8px 10px;
+
+    border: 1px solid #dce0e6;
+    border-radius: 9px;
+
+    outline: none;
+
+    background: white;
+    color: #303747;
+
+    font: inherit;
+    font-size: 13px;
+
+    transition:
+        border .15s ease,
+        box-shadow .15s ease;
+}
+
+.inputComentario:focus {
+    border-color: #8baaf5;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(53,104,232,.10);
+}
+
+.inputComentario::placeholder {
+    color: #adb4bf;
+}
+
+.acciones-copiar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+
+    margin-top: 14px;
+}
+
+@media (max-width: 500px) {
+    .acciones-copiar {
+        grid-template-columns: 1fr;
     }
 }

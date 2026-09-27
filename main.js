@@ -22,6 +22,98 @@ const botonCargar =
 const botonCopiar =
     document.getElementById("copiarNotas");
 
+    const botonCopiarComentarios =
+    document.getElementById(
+        "copiarComentarios"
+    );
+
+
+botonCopiarComentarios
+    ?.addEventListener(
+        "click",
+        copiarComentarios
+    );
+
+
+async function copiarComentarios() {
+
+    if (
+        !alumnos ||
+        alumnos.length === 0
+    ) {
+
+        mostrarError(
+            "No hay alumnos cargados."
+        );
+
+        return;
+    }
+
+
+    // IMPORTANTE:
+    // no filtramos los vacíos.
+    // Cada alumno conserva su fila.
+
+    const texto =
+        alumnos
+            .map(
+                alumno =>
+                    alumno.comentario || ""
+            )
+            .join("\n");
+
+
+    try {
+
+        await navigator.clipboard.writeText(
+            texto
+        );
+
+
+        // Mensaje principal
+
+        panelResultado
+            .classList
+            .remove("error");
+
+        panelResultado
+            .classList
+            .add("ok");
+
+
+        resultadoFinal.textContent =
+            "✓ Comentarios copiados";
+
+
+        // Mensaje flotante
+
+        if (miniTexto) {
+
+            miniTexto.textContent =
+                "✓ Comentarios copiados";
+        }
+
+
+        miniMensajePersistente =
+            true;
+
+        actualizarMiniEstado();
+
+
+    } catch (error) {
+
+        console.error(
+            "Error copiando comentarios:",
+            error
+        );
+
+
+        mostrarError(
+            "No pude copiar los comentarios."
+        );
+    }
+}
+
 const dictado =
     document.getElementById("dictado");
 
@@ -730,7 +822,8 @@ function cargarAlumnos(texto) {
 
             nombre,
 
-            nota: ""
+            nota: "",
+            comentario: ""
         });
     }
 
@@ -833,6 +926,31 @@ function renderTabla() {
                     "td"
                 );
 
+            const tdComentario = document.createElement("td");
+
+            const inputComentario =
+    document.createElement("input");
+
+inputComentario.className =
+    "inputComentario";
+
+inputComentario.type =
+    "text";
+
+inputComentario.placeholder =
+    "Sin comentario";
+
+inputComentario.value =
+    alumno.comentario || "";
+
+inputComentario.addEventListener(
+    "change",
+    () => {
+        alumno.comentario =
+            inputComentario.value.trim();
+    }
+);
+
             tdApellido.textContent =
                 alumno.apellido;
 
@@ -923,6 +1041,12 @@ function renderTabla() {
 
             tr.appendChild(
                 tdNota
+            );
+
+            tdComentario.appendChild(inputComentario);
+
+            tr.appendChild(
+                tdComentario
             );
 
             tbody.appendChild(
@@ -2463,14 +2587,31 @@ function procesarDictado(texto) {
 
     // Sacamos la nota para buscar alumno.
 
-    palabras.splice(
-        indiceNota,
-        1
+    // Todo lo anterior a la nota = alumno
+const palabrasAlumno =
+    palabras.slice(
+        0,
+        indiceNota
     );
 
+// Todo lo posterior = comentario
+const palabrasComentario =
+    palabras.slice(
+        indiceNota + 1
+    );
 
-    const nombreDicho =
-        palabras.join(" ");
+const nombreDicho =
+    palabrasAlumno.join(" ");
+
+const comentario =
+    palabrasComentario
+        .join(" ")
+        .trim();
+
+console.log(
+    "Comentario:",
+    comentario
+);
 
 
     if (
@@ -2893,7 +3034,8 @@ function procesarDictado(texto) {
 
     asignarNota(
         primero.index,
-        nota
+        nota,
+        comentario
     );
 }
 
@@ -2904,11 +3046,14 @@ function procesarDictado(texto) {
 
 function asignarNota(
     index,
-    nota
+    nota,
+    comentario = ""
 ) {
 
     alumnos[index].nota =
         nota;
+    
+    alumnos[index].comentario = comentario;
 
 
     const fila =
@@ -2932,6 +3077,15 @@ function asignarNota(
             input.value =
                 nota;
         }
+        const inputComentario =
+    fila.querySelector(
+        ".inputComentario"
+    );
+
+if (inputComentario) {
+    inputComentario.value =
+        comentario;
+}
 
 
         actualizarFila(

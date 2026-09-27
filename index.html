@@ -1,410 +1,716 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
 <title>Notas por voz</title>
 
 <style>
+
 * {
     box-sizing: border-box;
 }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f4f5f7;
+
     margin: 0;
-    color: #222;
+
+    background: #f4f6f8;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    color: #1f2937;
 }
 
 .contenedor {
-    max-width: 1000px;
-    margin: auto;
-    padding: 30px 20px 70px;
+
+    width: min(900px, 94%);
+
+    margin: 30px auto 80px;
 }
 
 h1 {
+
     text-align: center;
+
     margin-bottom: 5px;
 }
 
 .subtitulo {
+
     text-align: center;
-    color: #666;
+
+    color: #6b7280;
+
     margin-bottom: 25px;
 }
 
-/* =========================
-   CARGAR ALUMNOS
-========================= */
 
-.carga {
-    text-align: center;
-    margin-bottom: 25px;
+/* ============================= */
+/* PANEL */
+/* ============================= */
+
+.panel {
+
+    background: white;
+
+    border-radius: 18px;
+
+    padding: 20px;
+
+    margin-bottom: 18px;
+
+    box-shadow:
+        0 4px 18px
+        rgba(0,0,0,.07);
 }
+
+
+/* ============================= */
+/* BOTONES */
+/* ============================= */
 
 button {
+
     border: 0;
+
     cursor: pointer;
+
     font-size: 16px;
+
+    transition: .2s;
+}
+
+button:hover {
+
+    transform: translateY(-1px);
+}
+
+.botonSecundario {
+
+    width: 100%;
+
+    padding: 14px;
+
     border-radius: 10px;
+
+    background: #e5e7eb;
+
+    color: #111827;
+
+    font-weight: bold;
 }
 
-.boton-secundario {
-    padding: 11px 18px;
-    background: white;
-    border: 1px solid #ddd;
-}
+#microfono {
 
-.boton-secundario:hover {
-    background: #f0f0f0;
-}
+    display: block;
 
-/* =========================
-   MICRÓFONO
-========================= */
+    width: 120px;
 
-.microfono-area {
-    text-align: center;
-    margin: 30px 0;
-}
+    height: 120px;
 
-#botonMicrofono {
-    width: 115px;
-    height: 115px;
+    margin: 25px auto;
+
     border-radius: 50%;
+
     background: #2563eb;
+
     color: white;
-    font-size: 42px;
-    transition:
-        transform .2s,
-        background .2s,
-        box-shadow .2s;
-    box-shadow: 0 8px 22px rgba(37,99,235,.25);
+
+    font-size: 44px;
+
+    box-shadow:
+        0 8px 25px
+        rgba(37,99,235,.3);
 }
 
-#botonMicrofono:hover {
-    transform: scale(1.06);
+#microfono:hover {
+
+    transform: scale(1.05);
 }
 
-#botonMicrofono.escuchando {
+#microfono:disabled {
+
+    background: #9ca3af;
+
+    cursor: not-allowed;
+
+    box-shadow: none;
+
+    transform: none;
+}
+
+#microfono.activo {
+
     background: #dc2626;
-    animation: pulso 1.5s infinite;
+
+    animation:
+        pulso
+        1.4s
+        infinite;
 }
 
 @keyframes pulso {
+
     0% {
+
         box-shadow:
-            0 0 0 0 rgba(220,38,38,.45);
+            0 0 0 0
+            rgba(220,38,38,.45);
     }
 
     70% {
+
         box-shadow:
-            0 0 0 25px rgba(220,38,38,0);
+            0 0 0 30px
+            rgba(220,38,38,0);
     }
 
     100% {
+
         box-shadow:
-            0 0 0 0 rgba(220,38,38,0);
+            0 0 0 0
+            rgba(220,38,38,0);
     }
 }
 
-#textoMicrofono {
-    margin-top: 13px;
-    font-weight: bold;
-    color: #555;
-}
 
-/* =========================
-   RESULTADO / DICTADO
-========================= */
+/* ============================= */
+/* ESTADO */
+/* ============================= */
 
-#resultado {
-    background: white;
-    border-left: 7px solid #bbb;
-    border-radius: 12px;
-    padding: 22px;
-    margin: 25px 0;
-    min-height: 160px;
-    box-shadow: 0 3px 12px rgba(0,0,0,.07);
-    transition: .25s;
-}
+#estadoModelo {
 
-#resultado.correcto {
-    background: #f0fff4;
-    border-color: #22c55e;
-}
+    text-align: center;
 
-#resultado.dudoso {
-    background: #fffbea;
-    border-color: #eab308;
-}
-
-#resultado.error {
-    background: #fff1f1;
-    border-color: #ef4444;
-}
-
-#resultado.escuchando {
-    background: #eff6ff;
-    border-color: #3b82f6;
-}
-
-#resultadoTitulo {
     font-size: 14px;
-    font-weight: bold;
-    color: #666;
+
+    color: #6b7280;
+
+    margin-top: 10px;
+}
+
+
+/* ============================= */
+/* RESULTADO */
+/* ============================= */
+
+.resultado {
+
+    text-align: center;
+
+    min-height: 145px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    transition: .2s;
+}
+
+.resultado .titulo {
+
+    font-size: 14px;
+
     text-transform: uppercase;
+
+    color: #6b7280;
+
+    font-weight: bold;
+
     letter-spacing: 1px;
 }
 
-#resultadoPrincipal {
-    font-size: 32px;
+#dictado {
+
+    font-size: 24px;
+
     font-weight: bold;
-    margin-top: 9px;
-    min-height: 40px;
-}
 
-#resultadoDetalle {
-    color: #666;
     margin-top: 10px;
-    font-size: 16px;
+
+    min-height: 30px;
 }
 
-/* =========================
-   ESTADÍSTICAS
-========================= */
+#resultadoFinal {
 
-.estadisticas {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin: 25px 0;
-}
+    margin-top: 12px;
 
-.estadistica {
-    background: white;
-    border-radius: 9px;
-    padding: 12px 18px;
-    box-shadow: 0 1px 5px rgba(0,0,0,.08);
-}
-
-.estadistica strong {
     font-size: 21px;
+
+    font-weight: bold;
 }
 
-#estado {
+.resultado.ok {
+
+    background: #ecfdf5;
+
+    border: 2px solid #86efac;
+}
+
+.resultado.error {
+
+    background: #fff7ed;
+
+    border: 2px solid #fdba74;
+}
+
+
+/* ============================= */
+/* CONTADOR */
+/* ============================= */
+
+#contador {
+
     text-align: center;
-    color: #666;
-    min-height: 22px;
+
+    margin: 15px 0;
+
+    font-weight: bold;
+
+    color: #4b5563;
 }
 
-/* =========================
-   TABLA
-========================= */
 
-.tabla-contenedor {
+/* ============================= */
+/* TABLA */
+/* ============================= */
+
+.tablaContenedor {
+
     overflow-x: auto;
-    max-height: 500px;
-    background: white;
-    border-radius: 10px;
 }
 
 table {
+
     width: 100%;
+
     border-collapse: collapse;
+
+    background: white;
 }
 
-th, td {
-    padding: 11px;
-    border-bottom: 1px solid #ddd;
-}
+th,
+td {
 
-th {
-    background: #ececec;
-    position: sticky;
-    top: 0;
-    z-index: 2;
+    padding: 11px 10px;
+
+    border-bottom:
+        1px solid #e5e7eb;
+
     text-align: left;
 }
 
-tr.pendiente {
-    opacity: .65;
+th {
+
+    background: #f3f4f6;
+
+    font-size: 14px;
+
+    color: #4b5563;
 }
 
-tr.ultima {
-    outline: 3px solid #3b82f6;
-    outline-offset: -3px;
+tr.asignado {
+
+    background: #f0fdf4;
 }
 
-.nota {
+tr.desaprobado {
+
+    background: #fef2f2;
+}
+
+td.nota {
+
     width: 100px;
-    text-align: center;
-    font-size: 18px;
+
     font-weight: bold;
-    cursor: pointer;
 }
 
-.aprobado .nota {
-    background: #c9f8c9;
+.inputNota {
+
+    width: 65px;
+
+    padding: 6px;
+
+    font-size: 16px;
+
+    text-align: center;
+
+    border:
+        1px solid #d1d5db;
+
+    border-radius: 6px;
 }
 
-.desaprobado .nota {
-    background: #ffd4d4;
+
+/* ============================= */
+/* VACÍO */
+/* ============================= */
+
+#sinAlumnos {
+
+    text-align: center;
+
+    color: #9ca3af;
+
+    padding: 30px;
 }
 
-/* =========================
-   ACCIONES
-========================= */
 
-.acciones {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 25px;
-}
-
-/* =========================
-   HISTORIAL
-========================= */
-
-.historial {
-    background: white;
-    padding: 18px;
-    border-radius: 10px;
-    margin-top: 30px;
-}
-
-.historial h2 {
-    margin-top: 0;
-    font-size: 18px;
-}
-
-#listaHistorial li {
-    margin: 7px 0;
-}
+/* ============================= */
+/* MOBILE */
+/* ============================= */
 
 @media(max-width:600px) {
 
     .contenedor {
-        padding: 20px 10px 50px;
+
+        width: 96%;
+
+        margin-top: 15px;
     }
 
-    #resultadoPrincipal {
-        font-size: 24px;
+    h1 {
+
+        font-size: 25px;
     }
 
-    #botonMicrofono {
-        width: 95px;
-        height: 95px;
+    #microfono {
+
+        width: 105px;
+
+        height: 105px;
+
+        font-size: 38px;
+    }
+
+    #dictado {
+
+        font-size: 21px;
+    }
+
+}
+/* =========================================
+   MICROFONO REACTIVO AL VOLUMEN
+========================================= */
+
+#microfono {
+    --nivel: 0;
+
+    transform:
+        scale(
+            calc(1 + var(--nivel) * .22)
+        );
+
+    box-shadow:
+        0 0
+        calc(20px + var(--nivel) * 35px)
+        calc(var(--nivel) * 10px)
+        rgba(220,38,38,.28);
+}
+
+#microfono.activo {
+    animation: none;
+}
+
+/* aro exterior */
+
+#microfono.activo::before {
+    content: "";
+
+    position: absolute;
+
+    inset: -10px;
+
+    border-radius: 50%;
+
+    border: 3px solid
+        rgba(220,38,38,.25);
+
+    transform:
+        scale(
+            calc(1 + var(--nivel) * .30)
+        );
+
+    opacity:
+        calc(.3 + var(--nivel));
+}
+
+#microfono {
+    position: relative;
+}
+
+
+/* =========================================
+   MINI ESTADO FLOTANTE
+========================================= */
+
+#miniEstado {
+
+    display: none;
+
+    position: fixed;
+
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+
+    z-index: 1000;
+
+    background:
+        rgba(17,24,39,.94);
+
+    backdrop-filter:
+        blur(12px);
+
+    color: white;
+
+    border-radius: 16px;
+
+    padding: 10px 14px;
+
+    box-shadow:
+        0 8px 30px
+        rgba(0,0,0,.25);
+
+    align-items: center;
+
+    gap: 12px;
+}
+
+#miniMicrofono {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    flex-shrink: 0;
+
+    font-size: 12px;
+
+    font-weight: bold;
+
+    color: #fca5a5;
+}
+
+.miniPunto {
+
+    width: 9px;
+    height: 9px;
+
+    border-radius: 50%;
+
+    background: #ef4444;
+
+    box-shadow:
+        0 0 0
+        rgba(239,68,68,.5);
+
+    animation:
+        miniPulso
+        1.4s
+        infinite;
+}
+
+@keyframes miniPulso {
+
+    0% {
+        box-shadow:
+            0 0 0 0
+            rgba(239,68,68,.5);
+    }
+
+    70% {
+        box-shadow:
+            0 0 0 8px
+            rgba(239,68,68,0);
+    }
+
+    100% {
+        box-shadow:
+            0 0 0 0
+            rgba(239,68,68,0);
     }
 }
+
+#miniTexto {
+
+    overflow: hidden;
+
+    white-space: nowrap;
+
+    text-overflow: ellipsis;
+
+    font-size: 14px;
+
+    flex: 1;
+}
+
+
+/* Solo usamos el mini panel en pantallas chicas */
+
+@media(max-width: 700px) {
+
+    #miniEstado.visible {
+
+        display: flex;
+    }
+
+}
 </style>
+
 </head>
 
+<!-- MINI ESTADO FLOTANTE PARA CELULAR -->
+<div id="miniEstado">
+    <div id="miniMicrofono">
+        <span class="miniPunto"></span>
+        <span>Grabando</span>
+    </div>
+
+    <div id="miniTexto">
+        Escuchando...
+    </div>
+</div>
 <body>
 
 <div class="contenedor">
 
-    <h1>🎤 Notas por voz</h1>
+    <h1>
+        🎤 Notas por voz
+    </h1>
 
-    <p class="subtitulo">
-        Copiá Apellido y Nombre desde Google Sheets
-        y cargalos directamente desde el portapapeles.
-    </p>
+    <div class="subtitulo">
+        Decí el apellido o nombre del alumno y su nota.
+    </div>
 
 
+    <!-- ========================= -->
     <!-- CARGAR ALUMNOS -->
+    <!-- ========================= -->
 
-    <div class="carga">
+    <div class="panel">
 
         <button
-            class="boton-secundario"
-            onclick="cargarDesdePortapapeles()">
+            id="cargarAlumnos"
+            class="botonSecundario"
+        >
             📋 Cargar alumnos desde portapapeles
         </button>
 
+        <div id="estadoModelo">
+            ⏳ Cargando modelo de voz...
+        </div>
+
     </div>
 
 
-    <!-- MICRÓFONO -->
+    <!-- ========================= -->
+    <!-- RESULTADO -->
+    <!-- ========================= -->
 
-    <div class="microfono-area">
+    <div
+        id="panelResultado"
+        class="panel resultado"
+    >
+
+        <div class="titulo">
+            Dictado
+        </div>
+
+        <div id="dictado">
+            Esperando...
+        </div>
+
+        <div id="resultadoFinal"></div>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- MICROFONO -->
+    <!-- ========================= -->
+
+    <button
+        id="microfono"
+        disabled
+    >
+        🎤
+    </button>
+
+
+    <div id="contador">
+        0 alumnos · 0 notas cargadas
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- COPIAR -->
+    <!-- ========================= -->
+
+    <div class="panel">
 
         <button
-            id="botonMicrofono"
-            onclick="alternarMicrofono()">
-            🎤
+            id="copiarNotas"
+            class="botonSecundario"
+        >
+            📋 Copiar notas
         </button>
 
-        <div id="textoMicrofono">
-            Presioná para comenzar
-        </div>
-
     </div>
 
 
-    <!-- INFORMACIÓN -->
-
-    <div id="resultado">
-
-        <div id="resultadoTitulo">
-            LISTO
-        </div>
-
-        <div id="resultadoPrincipal">
-            —
-        </div>
-
-        <div id="resultadoDetalle">
-            Cargá los alumnos y comenzá a dictar.
-        </div>
-
-    </div>
-
-
-    <div id="estado">
-        Sin alumnos cargados.
-    </div>
-
-
-    <!-- ESTADÍSTICAS -->
-
-    <div class="estadisticas">
-
-        <div class="estadistica">
-            👥 Alumnos:
-            <strong id="total">0</strong>
-        </div>
-
-        <div class="estadistica">
-            ✅ Cargados:
-            <strong id="cargados">0</strong>
-        </div>
-
-        <div class="estadistica">
-            ⏳ Pendientes:
-            <strong id="pendientes">0</strong>
-        </div>
-
-    </div>
-
-
+    <!-- ========================= -->
     <!-- TABLA -->
+    <!-- ========================= -->
 
-    <div class="tabla-contenedor">
+    <div class="panel tablaContenedor">
 
-        <table id="tabla">
+        <div id="sinAlumnos">
+
+            Cargá primero los alumnos
+            desde el portapapeles.
+
+        </div>
+
+        <table
+            id="tabla"
+            style="display:none"
+        >
 
             <thead>
+
                 <tr>
-                    <th>Apellido</th>
-                    <th>Nombre</th>
-                    <th>Nota</th>
+
+                    <th>
+                        Apellido
+                    </th>
+
+                    <th>
+                        Nombre
+                    </th>
+
+                    <th>
+                        Nota
+                    </th>
+
                 </tr>
+
             </thead>
 
             <tbody></tbody>
@@ -413,2117 +719,14 @@ tr.ultima {
 
     </div>
 
-
-    <!-- ACCIONES -->
-
-    <div class="acciones">
-
-        <button
-            class="boton-secundario"
-            onclick="deshacer()">
-            ↩️ Deshacer
-        </button>
-
-        <button
-            class="boton-secundario"
-            onclick="copiarNotas()">
-            📋 Copiar notas
-        </button>
-
-        <button
-            class="boton-secundario"
-            onclick="borrarTodasLasNotas()">
-            🗑️ Borrar notas
-        </button>
-
-    </div>
-
-
-    <!-- HISTORIAL -->
-
-    <div class="historial">
-
-        <h2>🕘 Últimas acciones</h2>
-
-        <ul id="listaHistorial"></ul>
-
-    </div>
-
 </div>
 
 
-<script>
-
-let recognition = null;
-
-let alumnos = [];
-
-let historialCambios = [];
-
-let historialVisual = [];
-
-let escuchando = false;
-
-
-/*
-    Cuánto mejor tiene que ser el primer
-    candidato respecto del segundo.
-*/
-
-const DIFERENCIA_MINIMA = 25;
-
-const PUNTAJE_MINIMO = 45;
-
-
-// ======================================================
-// NORMALIZAR
-// ======================================================
-
-function normalizar(texto) {
-
-    return texto
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^\w\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-}
-
-
-// ======================================================
-// CARGAR ALUMNOS DIRECTAMENTE DESDE PORTAPAPELES
-// ======================================================
-
-async function cargarDesdePortapapeles() {
-
-    let texto;
-
-    try {
-
-        texto =
-            await navigator.clipboard.readText();
-
-    } catch(error) {
-
-        alert(
-            "El navegador no permitió leer el portapapeles.\n\n" +
-            "Asegurate de permitir el acceso al portapapeles."
-        );
-
-        return;
-    }
-
-
-    if(!texto.trim()) {
-
-        alert(
-            "El portapapeles está vacío."
-        );
-
-        return;
-    }
-
-
-    const lineas =
-        texto.trim().split(/\r?\n/);
-
-
-    const nuevosAlumnos = [];
-
-
-    for(const linea of lineas) {
-
-        if(!linea.trim())
-            continue;
-
-
-        /*
-            Cuando copiamos dos columnas desde
-            Google Sheets, vienen separadas
-            mediante tabulaciones.
-        */
-
-        const partes =
-            linea.split("\t");
-
-
-        if(partes.length < 2)
-            continue;
-
-
-        const apellido =
-            partes[0].trim();
-
-        const nombre =
-            partes[1].trim();
-
-
-        if(!apellido || !nombre)
-            continue;
-
-
-        nuevosAlumnos.push({
-
-            apellido,
-            nombre,
-            nota:""
-
-        });
-
-    }
-
-
-    if(nuevosAlumnos.length === 0) {
-
-        alert(
-            "No pude encontrar dos columnas.\n\n" +
-            "Copiá las columnas Apellido y Nombre desde Google Sheets."
-        );
-
-        return;
-    }
-
-
-    alumnos =
-        nuevosAlumnos;
-
-
-    restaurarNotas();
-
-    dibujarTabla();
-
-    actualizarEstadisticas();
-
-
-    mostrarResultado(
-
-        "correcto",
-
-        "✅ LISTA CARGADA",
-
-        alumnos.length +
-        " alumnos",
-
-        "Ya podés comenzar a dictar."
-
-    );
-
-
-    document.getElementById("estado")
-        .textContent =
-        alumnos.length +
-        " alumnos cargados.";
-
-}
-
-
-// ======================================================
-// TABLA
-// ======================================================
-
-function dibujarTabla() {
-
-    const tbody =
-        document.querySelector(
-            "#tabla tbody"
-        );
-
-
-    tbody.innerHTML = "";
-
-
-    alumnos.forEach(
-        (alumno,index) => {
-
-            const tr =
-                document.createElement("tr");
-
-
-            if(alumno.nota === "")
-                tr.classList.add(
-                    "pendiente"
-                );
-
-
-            if(alumno.nota !== "") {
-
-                if(Number(alumno.nota) >= 6)
-
-                    tr.classList.add(
-                        "aprobado"
-                    );
-
-                else
-
-                    tr.classList.add(
-                        "desaprobado"
-                    );
-
-            }
-
-
-            const apellido =
-                document.createElement("td");
-
-            apellido.textContent =
-                alumno.apellido;
-
-
-            const nombre =
-                document.createElement("td");
-
-            nombre.textContent =
-                alumno.nombre;
-
-
-            const nota =
-                document.createElement("td");
-
-            nota.className = "nota";
-
-            nota.textContent =
-                alumno.nota;
-
-            nota.title =
-                "Hacé clic para editar";
-
-            nota.onclick =
-                () => editarNota(index);
-
-
-            tr.appendChild(apellido);
-
-            tr.appendChild(nombre);
-
-            tr.appendChild(nota);
-
-
-            tbody.appendChild(tr);
-
-        }
-    );
-
-}
-
-
-// ======================================================
-// BOTÓN ÚNICO DEL MICRÓFONO
-// ======================================================
-
-function alternarMicrofono() {
-
-    if(escuchando) {
-
-        detener();
-
-    } else {
-
-        iniciar();
-
-    }
-
-}
-
-
-// ======================================================
-// INICIAR
-// ======================================================
-
-async function iniciar() {
-
-    if(alumnos.length === 0) {
-
-        alert(
-            "Primero cargá los alumnos desde el portapapeles."
-        );
-
-        return;
-
-    }
-
-
-    const SpeechRecognition =
-
-        window.SpeechRecognition ||
-
-        window.webkitSpeechRecognition;
-
-
-    if(!SpeechRecognition) {
-
-        alert(
-            "Este navegador no soporta reconocimiento de voz.\n\n" +
-            "Probá con Google Chrome."
-        );
-
-        return;
-
-    }
-
-
-    try {
-
-        await navigator.mediaDevices
-            .getUserMedia({
-                audio:true
-            });
-
-    } catch {
-
-        alert(
-            "No se pudo acceder al micrófono."
-        );
-
-        return;
-
-    }
-
-
-    recognition =
-        new SpeechRecognition();
-
-
-    recognition.lang =
-        "es-AR";
-
-
-    recognition.continuous =
-        true;
-
-
-    /*
-        MUY IMPORTANTE:
-
-        Esto permite recibir resultados
-        mientras todavía estás hablando.
-    */
-
-    recognition.interimResults =
-        true;
-
-
-    recognition.onstart =
-        () => {
-
-            escuchando = true;
-
-            actualizarBotonMicrofono();
-
-            mostrarResultado(
-
-                "escuchando",
-
-                "🎤 ESCUCHANDO",
-
-                "Decí alumno y nota…",
-
-                "Por ejemplo: Pérez Juan ocho"
-
-            );
-
-        };
-
-
-    recognition.onresult =
-        event => {
-
-
-            let provisional = "";
-
-            let definitivo = "";
-
-
-            /*
-                Recorremos todos los resultados
-                nuevos recibidos.
-            */
-
-            for(
-                let i =
-                    event.resultIndex;
-
-                i <
-                    event.results.length;
-
-                i++
-            ) {
-
-                const texto =
-                    event.results[i][0]
-                        .transcript;
-
-
-                if(
-                    event.results[i]
-                        .isFinal
-                ) {
-
-                    definitivo +=
-                        texto;
-
-                } else {
-
-                    provisional +=
-                        texto;
-
-                }
-
-            }
-
-
-            /*
-                Mientras estás hablando,
-                mostramos lo que Chrome
-                cree estar escuchando.
-            */
-
-            if(provisional.trim()) {
-
-                mostrarDictadoEnVivo(
-                    provisional
-                );
-
-            }
-
-
-            /*
-                Cuando Chrome considera que
-                terminó la frase, procesamos
-                alumno + nota.
-            */
-
-            if(definitivo.trim()) {
-
-                mostrarDictadoEnVivo(
-                    definitivo
-                );
-
-                procesarTexto(
-                    definitivo.trim()
-                );
-
-            }
-
-        };
-
-
-    recognition.onerror =
-        event => {
-
-
-            if(
-                event.error ===
-                "no-speech"
-            )
-                return;
-
-
-            document
-                .getElementById(
-                    "estado"
-                )
-                .textContent =
-
-                "Error: " +
-                event.error;
-
-        };
-
-
-    recognition.onend =
-        () => {
-
-
-            /*
-                Chrome puede cortar
-                automáticamente el
-                reconocimiento.
-
-                Si el usuario no lo detuvo,
-                lo volvemos a iniciar.
-            */
-
-            if(escuchando) {
-
-                setTimeout(
-                    () => {
-
-                        try {
-
-                            recognition.start();
-
-                        } catch {}
-
-                    },
-
-                    250
-                );
-
-            } else {
-
-                actualizarBotonMicrofono();
-
-            }
-
-        };
-
-
-    try {
-
-        recognition.start();
-
-    } catch {}
-
-}
-
-
-// ======================================================
-// DETENER
-// ======================================================
-
-function detener() {
-
-    escuchando = false;
-
-
-    if(recognition) {
-
-        try {
-
-            recognition.stop();
-
-        } catch {}
-
-    }
-
-
-    actualizarBotonMicrofono();
-
-
-    document
-        .getElementById(
-            "estado"
-        )
-        .textContent =
-        "Micrófono detenido.";
-
-}
-
-
-// ======================================================
-// ASPECTO DEL BOTÓN
-// ======================================================
-
-function actualizarBotonMicrofono() {
-
-    const boton =
-        document.getElementById(
-            "botonMicrofono"
-        );
-
-
-    const texto =
-        document.getElementById(
-            "textoMicrofono"
-        );
-
-
-    if(escuchando) {
-
-        boton.classList.add(
-            "escuchando"
-        );
-
-        boton.textContent =
-            "■";
-
-        texto.textContent =
-            "Escuchando · presioná para detener";
-
-    } else {
-
-        boton.classList.remove(
-            "escuchando"
-        );
-
-        boton.textContent =
-            "🎤";
-
-        texto.textContent =
-            "Presioná para comenzar";
-
-    }
-
-}
-
-
-// ======================================================
-// MOSTRAR DICTADO EN VIVO
-// ======================================================
-
-function mostrarDictadoEnVivo(texto) {
-
-    const resultado =
-        document.getElementById(
-            "resultado"
-        );
-
-
-    resultado.className =
-        "escuchando";
-
-
-    document
-        .getElementById(
-            "resultadoTitulo"
-        )
-        .textContent =
-        "🎤 ESCUCHANDO";
-
-
-    document
-        .getElementById(
-            "resultadoPrincipal"
-        )
-        .textContent =
-        texto;
-
-
-    document
-        .getElementById(
-            "resultadoDetalle"
-        )
-        .textContent =
-        "Esperando que termine la frase…";
-
-}
-
-
-// ======================================================
-// PROCESAR FRASE
-// ======================================================
-
-function procesarTexto(original) {
-
-    const texto =
-        normalizar(original);
-
-
-    if(!texto)
-        return;
-
-
-    // --------------------------
-    // DESHACER
-    // --------------------------
-
-    if(
-        texto === "deshacer" ||
-        texto.includes(
-            "deshacer ultima"
-        )
-    ) {
-
-        deshacer();
-
-        return;
-
-    }
-
-
-    // --------------------------
-    // BORRAR
-    // --------------------------
-
-    if(
-        texto.startsWith(
-            "borrar "
-        )
-    ) {
-
-        const busqueda =
-            texto.replace(
-                /^borrar\s+/,
-                ""
-            );
-
-
-        borrarPorNombre(
-            busqueda,
-            original
-        );
-
-        return;
-
-    }
-
-
-    // --------------------------
-    // BUSCAR NOTA
-    // --------------------------
-
-    const partes =
-        texto.split(/\s+/);
-
-
-    let nota = NaN;
-
-    let posicionNota = -1;
-
-
-    /*
-        Buscamos la nota empezando
-        desde el final.
-    */
-
-    for(
-        let i =
-            partes.length - 1;
-
-        i >= 0;
-
-        i--
-    ) {
-
-        const posible =
-            convertirNumero(
-                partes[i]
-            );
-
-
-        if(!isNaN(posible)) {
-
-            nota =
-                posible;
-
-            posicionNota =
-                i;
-
-            break;
-
-        }
-
-    }
-
-
-    if(isNaN(nota)) {
-
-        mostrarResultado(
-
-            "error",
-
-            "🔢 NOTA NO RECONOCIDA",
-
-            "No encontré una nota",
-
-            'Escuchado: "' +
-            original +
-            '"'
-
-        );
-
-        return;
-
-    }
-
-
-    if(
-        nota < 1 ||
-        nota > 10
-    ) {
-
-        mostrarResultado(
-
-            "error",
-
-            "🔢 NOTA INVÁLIDA",
-
-            "La nota debe ser de 1 a 10",
-
-            'Escuchado: "' +
-            original +
-            '"'
-
-        );
-
-        return;
-
-    }
-
-
-    /*
-        Quitamos la nota y dejamos
-        solamente las palabras que
-        deberían corresponder al alumno.
-    */
-
-    partes.splice(
-        posicionNota,
-        1
-    );
-
-
-    const palabrasBuscadas =
-        partes.filter(Boolean);
-
-
-    if(
-        palabrasBuscadas.length === 0
-    ) {
-
-        mostrarResultado(
-
-            "error",
-
-            "❌ ALUMNO NO RECONOCIDO",
-
-            "No escuché el nombre",
-
-            'Escuchado: "' +
-            original +
-            '"'
-
-        );
-
-        return;
-
-    }
-
-
-    const candidatos =
-        obtenerCandidatos(
-            palabrasBuscadas
-        );
-
-
-    const primero =
-        candidatos[0];
-
-
-    const segundo =
-        candidatos[1];
-
-
-    if(
-        !primero ||
-        primero.puntaje <
-            PUNTAJE_MINIMO
-    ) {
-
-        mostrarNoReconocido(
-            original,
-            candidatos
-        );
-
-        return;
-
-    }
-
-
-    /*
-        MARGEN DE SEGURIDAD
-
-        Si el primero y el segundo
-        están demasiado cerca,
-        preferimos NO asignar.
-    */
-
-    if(
-        segundo &&
-
-        primero.puntaje -
-        segundo.puntaje <
-
-        DIFERENCIA_MINIMA
-    ) {
-
-        mostrarNoReconocido(
-            original,
-            candidatos
-        );
-
-        return;
-
-    }
-
-
-    asignarNota(
-        primero.index,
-        nota,
-        original
-    );
-
-}
-
-
-// ======================================================
-// CANDIDATOS
-// ======================================================
-
-function obtenerCandidatos(
-    palabras
-) {
-
-    return alumnos
-
-        .map(
-            (alumno,index) => ({
-
-                index,
-
-                puntaje:
-                    calcularPuntaje(
-                        palabras,
-                        alumno
-                    )
-
-            })
-        )
-
-        .sort(
-            (a,b) =>
-                b.puntaje -
-                a.puntaje
-        );
-
-}
-
-
-// ======================================================
-// PUNTAJE DE SIMILITUD
-// ======================================================
-
-function calcularPuntaje(
-    buscadas,
-    alumno
-) {
-
-    const palabrasAlumno =
-
-        normalizar(
-
-            alumno.apellido +
-            " " +
-            alumno.nombre
-
-        ).split(/\s+/);
-
-
-    let puntaje = 0;
-
-
-    for(const buscada of buscadas) {
-
-        let mejor =
-            -20;
-
-
-        for(
-            const palabraAlumno
-            of palabrasAlumno
-        ) {
-
-            let puntos = 0;
-
-
-            if(
-                palabraAlumno ===
-                buscada
-            ) {
-
-                puntos = 100;
-
-            }
-
-            else if(
-
-                palabraAlumno
-                    .startsWith(
-                        buscada
-                    )
-
-                ||
-
-                buscada
-                    .startsWith(
-                        palabraAlumno
-                    )
-
-            ) {
-
-                puntos = 65;
-
-            }
-
-            else {
-
-                const distancia =
-                    levenshtein(
-                        palabraAlumno,
-                        buscada
-                    );
-
-
-                const largo =
-                    Math.max(
-
-                        palabraAlumno.length,
-
-                        buscada.length
-
-                    );
-
-
-                const similitud =
-
-                    1 -
-
-                    distancia /
-                    Math.max(
-                        largo,
-                        1
-                    );
-
-
-                if(
-                    similitud >= .8
-                )
-
-                    puntos = 50;
-
-
-                else if(
-                    similitud >= .65
-                )
-
-                    puntos = 25;
-
-
-                else
-
-                    puntos = -10;
-
-            }
-
-
-            mejor =
-                Math.max(
-                    mejor,
-                    puntos
-                );
-
-        }
-
-
-        puntaje += mejor;
-
-    }
-
-
-    if(
-        buscadas.length >
-        palabrasAlumno.length
-    ) {
-
-        puntaje -=
-
-            (
-                buscadas.length -
-                palabrasAlumno.length
-            )
-
-            * 15;
-
-    }
-
-
-    return puntaje;
-
-}
-
-
-// ======================================================
-// ASIGNAR NOTA
-// ======================================================
-
-function asignarNota(
-    index,
-    nota,
-    original
-) {
-
-    const alumno =
-        alumnos[index];
-
-
-    historialCambios.push({
-
-        index,
-
-        notaAnterior:
-            alumno.nota,
-
-        notaNueva:
-            nota
-
-    });
-
-
-    alumno.nota =
-        nota;
-
-
-    guardarNotas();
-
-    dibujarTabla();
-
-    actualizarEstadisticas();
-
-    resaltarFila(index);
-
-
-    mostrarResultado(
-
-        "correcto",
-
-        "✅ NOTA ASIGNADA",
-
-        alumno.apellido +
-        ", " +
-        alumno.nombre +
-        " — " +
-        nota,
-
-        'Escuchado: "' +
-        original +
-        '"'
-
-    );
-
-
-    agregarHistorial(
-
-        alumno.apellido +
-        " " +
-        alumno.nombre +
-        " → " +
-        nota
-
-    );
-
-}
-
-
-// ======================================================
-// MOSTRAR RESULTADO
-// ======================================================
-
-function mostrarResultado(
-    clase,
-    titulo,
-    principal,
-    detalle
-) {
-
-    const resultado =
-        document.getElementById(
-            "resultado"
-        );
-
-
-    resultado.className =
-        clase;
-
-
-    document
-        .getElementById(
-            "resultadoTitulo"
-        )
-        .textContent =
-        titulo;
-
-
-    document
-        .getElementById(
-            "resultadoPrincipal"
-        )
-        .textContent =
-        principal;
-
-
-    document
-        .getElementById(
-            "resultadoDetalle"
-        )
-        .textContent =
-        detalle;
-
-}
-
-
-// ======================================================
-// NO RECONOCIDO
-// ======================================================
-
-function mostrarNoReconocido(
-    original,
-    candidatos
-) {
-
-    const posibles =
-
-        candidatos
-
-        .slice(0,3)
-
-        .map(c => {
-
-            const alumno =
-                alumnos[c.index];
-
-
-            return (
-
-                alumno.apellido +
-                " " +
-                alumno.nombre
-
-            );
-
-        })
-
-        .join(" / ");
-
-
-    mostrarResultado(
-
-        "dudoso",
-
-        "⚠️ NO RECONOCIDO",
-
-        "No se cargó ninguna nota",
-
-        'Escuchado: "' +
-        original +
-        '". Posibles: ' +
-        posibles
-
-    );
-
-}
-
-
-// ======================================================
-// RESALTAR FILA
-// ======================================================
-
-function resaltarFila(index) {
-
-    const filas =
-        document.querySelectorAll(
-            "#tabla tbody tr"
-        );
-
-
-    filas.forEach(
-        fila =>
-            fila.classList.remove(
-                "ultima"
-            )
-    );
-
-
-    const fila =
-        filas[index];
-
-
-    if(!fila)
-        return;
-
-
-    fila.classList.add(
-        "ultima"
-    );
-
-
-    fila.scrollIntoView({
-
-        behavior:"smooth",
-
-        block:"center"
-
-    });
-
-}
-
-
-// ======================================================
-// EDITAR NOTA
-// ======================================================
-
-function editarNota(index) {
-
-    const alumno =
-        alumnos[index];
-
-
-    const valor =
-        prompt(
-
-            "Nota de " +
-
-            alumno.apellido +
-            " " +
-            alumno.nombre +
-
-            "\n\nDejá vacío para borrar:",
-
-            alumno.nota
-
-        );
-
-
-    if(valor === null)
-        return;
-
-
-    if(
-        valor.trim() === ""
-    ) {
-
-        cambiarNotaManual(
-            index,
-            ""
-        );
-
-        return;
-
-    }
-
-
-    const nota =
-        Number(valor);
-
-
-    if(
-        !Number.isInteger(nota) ||
-        nota < 1 ||
-        nota > 10
-    ) {
-
-        alert(
-            "La nota debe ser un número entero entre 1 y 10."
-        );
-
-        return;
-
-    }
-
-
-    cambiarNotaManual(
-        index,
-        nota
-    );
-
-}
-
-
-// ======================================================
-// CAMBIO MANUAL
-// ======================================================
-
-function cambiarNotaManual(
-    index,
-    nota
-) {
-
-    const alumno =
-        alumnos[index];
-
-
-    historialCambios.push({
-
-        index,
-
-        notaAnterior:
-            alumno.nota,
-
-        notaNueva:
-            nota
-
-    });
-
-
-    alumno.nota =
-        nota;
-
-
-    guardarNotas();
-
-    dibujarTabla();
-
-    actualizarEstadisticas();
-
-    resaltarFila(index);
-
-
-    mostrarResultado(
-
-        "correcto",
-
-        "✏️ NOTA MODIFICADA",
-
-        alumno.apellido +
-        ", " +
-        alumno.nombre +
-        " — " +
-        (
-            nota === ""
-            ? "Sin nota"
-            : nota
-        ),
-
-        "Modificación manual"
-
-    );
-
-
-    agregarHistorial(
-
-        alumno.apellido +
-        " " +
-        alumno.nombre +
-        " → " +
-        (
-            nota === ""
-            ? "nota borrada"
-            : nota
-        )
-
-    );
-
-}
-
-
-// ======================================================
-// BORRAR POR VOZ
-// ======================================================
-
-function borrarPorNombre(
-    busqueda,
-    original
-) {
-
-    const palabras =
-
-        normalizar(busqueda)
-
-        .split(/\s+/)
-
-        .filter(Boolean);
-
-
-    const candidatos =
-        obtenerCandidatos(
-            palabras
-        );
-
-
-    if(!candidatos.length)
-        return;
-
-
-    const primero =
-        candidatos[0];
-
-
-    const segundo =
-        candidatos[1];
-
-
-    if(
-
-        primero.puntaje <
-            PUNTAJE_MINIMO
-
-        ||
-
-        (
-            segundo &&
-
-            primero.puntaje -
-            segundo.puntaje <
-
-            DIFERENCIA_MINIMA
-        )
-
-    ) {
-
-        mostrarNoReconocido(
-            original,
-            candidatos
-        );
-
-        return;
-
-    }
-
-
-    cambiarNotaManual(
-        primero.index,
-        ""
-    );
-
-}
-
-
-// ======================================================
-// DESHACER
-// ======================================================
-
-function deshacer() {
-
-    if(
-        historialCambios.length === 0
-    ) {
-
-        mostrarResultado(
-
-            "dudoso",
-
-            "↩️ NADA PARA DESHACER",
-
-            "No hay cambios recientes",
-
-            ""
-
-        );
-
-        return;
-
-    }
-
-
-    const cambio =
-        historialCambios.pop();
-
-
-    const alumno =
-        alumnos[
-            cambio.index
-        ];
-
-
-    alumno.nota =
-        cambio.notaAnterior;
-
-
-    guardarNotas();
-
-    dibujarTabla();
-
-    actualizarEstadisticas();
-
-    resaltarFila(
-        cambio.index
-    );
-
-
-    mostrarResultado(
-
-        "dudoso",
-
-        "↩️ CAMBIO DESHECHO",
-
-        alumno.apellido +
-        ", " +
-        alumno.nombre +
-        " — " +
-        (
-            alumno.nota === ""
-            ? "Sin nota"
-            : alumno.nota
-        ),
-
-        "Se restauró la nota anterior."
-
-    );
-
-
-    agregarHistorial(
-
-        "Deshacer: " +
-        alumno.apellido +
-        " " +
-        alumno.nombre
-
-    );
-
-}
-
-
-// ======================================================
-// ESTADÍSTICAS
-// ======================================================
-
-function actualizarEstadisticas() {
-
-    const cargados =
-
-        alumnos.filter(
-
-            alumno =>
-                alumno.nota !== ""
-
-        ).length;
-
-
-    document
-        .getElementById(
-            "total"
-        )
-        .textContent =
-        alumnos.length;
-
-
-    document
-        .getElementById(
-            "cargados"
-        )
-        .textContent =
-        cargados;
-
-
-    document
-        .getElementById(
-            "pendientes"
-        )
-        .textContent =
-
-        alumnos.length -
-        cargados;
-
-}
-
-
-// ======================================================
-// HISTORIAL
-// ======================================================
-
-function agregarHistorial(texto) {
-
-    const hora =
-
-        new Date()
-        .toLocaleTimeString(
-
-            "es-AR",
-
-            {
-                hour:"2-digit",
-                minute:"2-digit"
-            }
-
-        );
-
-
-    historialVisual.unshift(
-
-        hora +
-        " — " +
-        texto
-
-    );
-
-
-    historialVisual =
-        historialVisual.slice(
-            0,
-            10
-        );
-
-
-    dibujarHistorial();
-
-}
-
-
-function dibujarHistorial() {
-
-    const lista =
-        document.getElementById(
-            "listaHistorial"
-        );
-
-
-    lista.innerHTML = "";
-
-
-    historialVisual.forEach(
-        texto => {
-
-            const li =
-                document.createElement(
-                    "li"
-                );
-
-
-            li.textContent =
-                texto;
-
-
-            lista.appendChild(
-                li
-            );
-
-        }
-    );
-
-}
-
-
-// ======================================================
-// LOCAL STORAGE
-// ======================================================
-
-function guardarNotas() {
-
-    const datos =
-        alumnos.map(
-            alumno => ({
-
-                apellido:
-                    alumno.apellido,
-
-                nombre:
-                    alumno.nombre,
-
-                nota:
-                    alumno.nota
-
-            })
-        );
-
-
-    localStorage.setItem(
-
-        "notasPorVoz",
-
-        JSON.stringify(
-            datos
-        )
-
-    );
-
-}
-
-
-function restaurarNotas() {
-
-    let guardados;
-
-
-    try {
-
-        guardados =
-            JSON.parse(
-
-                localStorage.getItem(
-                    "notasPorVoz"
-                )
-
-            );
-
-    } catch {
-
-        return;
-
-    }
-
-
-    if(
-        !Array.isArray(
-            guardados
-        )
-    )
-        return;
-
-
-    alumnos.forEach(
-        alumno => {
-
-            const encontrado =
-
-                guardados.find(
-                    guardado =>
-
-                        normalizar(
-
-                            guardado.apellido +
-                            " " +
-                            guardado.nombre
-
-                        )
-
-                        ===
-
-                        normalizar(
-
-                            alumno.apellido +
-                            " " +
-                            alumno.nombre
-
-                        )
-
-                );
-
-
-            if(encontrado)
-
-                alumno.nota =
-                    encontrado.nota;
-
-        }
-    );
-
-}
-
-
-// ======================================================
-// BORRAR TODAS
-// ======================================================
-
-function borrarTodasLasNotas() {
-
-    if(
-        !confirm(
-            "¿Borrar todas las notas?"
-        )
-    )
-        return;
-
-
-    alumnos.forEach(
-        alumno =>
-            alumno.nota = ""
-    );
-
-
-    historialCambios = [];
-
-
-    guardarNotas();
-
-    dibujarTabla();
-
-    actualizarEstadisticas();
-
-
-    mostrarResultado(
-
-        "dudoso",
-
-        "🗑️ NOTAS BORRADAS",
-
-        "Todas las notas fueron eliminadas",
-
-        "La lista de alumnos se mantiene."
-
-    );
-
-}
-
-
-// ======================================================
-// NÚMEROS
-// ======================================================
-
-function convertirNumero(texto) {
-
-    texto =
-        normalizar(texto);
-
-
-    const mapa = {
-
-        "uno":1,
-        "una":1,
-        "1":1,
-
-        "dos":2,
-        "2":2,
-
-        "tres":3,
-        "3":3,
-
-        "cuatro":4,
-        "4":4,
-
-        "cinco":5,
-        "5":5,
-
-        "seis":6,
-        "6":6,
-
-        "siete":7,
-        "7":7,
-
-        "ocho":8,
-        "8":8,
-
-        "nueve":9,
-        "9":9,
-
-        "diez":10,
-        "10":10
-
-    };
-
-
-    if(texto in mapa)
-        return mapa[texto];
-
-
-    return NaN;
-
-}
-
-
-// ======================================================
-// LEVENSHTEIN
-// ======================================================
-
-function levenshtein(a,b) {
-
-    const matrix = [];
-
-
-    for(
-        let i=0;
-        i<=b.length;
-        i++
-    )
-
-        matrix[i] = [i];
-
-
-    for(
-        let j=0;
-        j<=a.length;
-        j++
-    )
-
-        matrix[0][j] = j;
-
-
-    for(
-        let i=1;
-        i<=b.length;
-        i++
-    ) {
-
-        for(
-            let j=1;
-            j<=a.length;
-            j++
-        ) {
-
-            if(
-                b.charAt(i-1) ===
-                a.charAt(j-1)
-            ) {
-
-                matrix[i][j] =
-                    matrix[i-1][j-1];
-
-            } else {
-
-                matrix[i][j] =
-                    Math.min(
-
-                        matrix[i-1][j-1] + 1,
-
-                        matrix[i][j-1] + 1,
-
-                        matrix[i-1][j] + 1
-
-                    );
-
-            }
-
-        }
-
-    }
-
-
-    return matrix[
-        b.length
-    ][
-        a.length
-    ];
-
-}
-
-
-// ======================================================
-// COPIAR NOTAS
-// ======================================================
-
-async function copiarNotas() {
-
-    if(
-        alumnos.length === 0
-    ) {
-
-        alert(
-            "No hay alumnos cargados."
-        );
-
-        return;
-
-    }
-
-
-    const texto =
-
-        alumnos
-
-        .map(
-            alumno =>
-                alumno.nota === ""
-                ? ""
-                : alumno.nota
-        )
-
-        .join("\n");
-
-
-    try {
-
-        await navigator.clipboard
-            .writeText(texto);
-
-
-        document
-            .getElementById(
-                "estado"
-            )
-            .textContent =
-            "📋 Notas copiadas al portapapeles.";
-
-    } catch {
-
-        alert(
-            "No se pudieron copiar las notas."
-        );
-
-    }
-
-}
-
-</script>
+<script
+    type="module"
+    src="/main.js"
+></script>
 
 </body>
+
 </html>

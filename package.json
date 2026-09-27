@@ -1,0 +1,16 @@
+{
+  "name": "cargar-notas-por-voz-2",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vosk-browser": "^0.0.8"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}

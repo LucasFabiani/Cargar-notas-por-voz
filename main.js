@@ -57,6 +57,12 @@ let ultimoResultado = "";
 let temporizadorGrabacion = null;
 let inicioGrabacion = 0;
 
+// Mientras mantenés pulsado, solamente guardamos audio.
+// Vosk NO trabaja durante la grabación.
+// Recién procesa todo cuando soltás.
+let fragmentosAudio = [];
+let muestrasGrabadas = 0;
+
 
 // ======================================================
 // NORMALIZAR
@@ -225,7 +231,6 @@ function similitudPalabra(a, b) {
 
 
     // Una contiene a la otra
-
     if (
         a.length >= 4 &&
         b.length >= 4 &&
@@ -255,7 +260,6 @@ function similitudPalabra(a, b) {
 
 
     // Un error en palabra larga
-
     if (
         maximo >= 6 &&
         distancia === 1
@@ -270,7 +274,6 @@ function similitudPalabra(a, b) {
 
 
     // Dos errores en palabras largas
-
     if (
         maximo >= 8 &&
         distancia === 2
@@ -284,8 +287,9 @@ function similitudPalabra(a, b) {
     }
 
 
-    // Prefijo común
-    // Ejemplo: ROLLET -> ROLEX
+    // Prefijo común.
+    // Sirve para casos como:
+    // ROLLET -> ROLEX
 
     let inicioComun = 0;
 
@@ -363,8 +367,7 @@ function generarVariantesPalabras(palabras) {
     }
 
 
-    // berry no -> berryno
-
+    // "berry no" -> "berryno"
     for (
         let i = 0;
         i < palabras.length - 1;
@@ -378,8 +381,7 @@ function generarVariantesPalabras(palabras) {
     }
 
 
-    // Unir tres palabras
-
+    // También probamos tres palabras juntas.
     for (
         let i = 0;
         i < palabras.length - 2;
@@ -401,7 +403,7 @@ function generarVariantesPalabras(palabras) {
 
 
 // ======================================================
-// COMPARAR CONJUNTO
+// COMPARAR CONJUNTO DE PALABRAS
 // ======================================================
 
 function compararConjuntoPalabras(
@@ -735,9 +737,8 @@ function cargarAlumnos(texto) {
     actualizarBoton();
 
 
-    // Dejamos preparado el micrófono
-    // para que el dictado arranque rápido.
-
+    // Preparamos el micrófono para que
+    // el primer dictado arranque rápido.
     prepararAudio();
 }
 
@@ -1091,7 +1092,7 @@ async function prepararAudio() {
                 );
 
 
-        // ANALYSER
+        // ANALYSER PARA EL CÍRCULO DE VOLUMEN
 
         analyser =
             audioContext
@@ -1117,7 +1118,9 @@ async function prepararAudio() {
         );
 
 
-        // PROCESSOR
+        // ScriptProcessor recibe el audio.
+        // IMPORTANTE:
+        // acá YA NO se ejecuta Vosk.
 
         processor =
             audioContext
@@ -1155,28 +1158,49 @@ async function prepararAudio() {
         processor.onaudioprocess =
             evento => {
 
-                if (
-                    !escuchando ||
-                    !recognizer
-                ) {
-
+                // Si no estamos manteniendo
+                // pulsado, ignoramos el audio.
+                if (!escuchando) {
                     return;
                 }
 
 
                 try {
 
-                    recognizer
-                        .acceptWaveform(
-                            evento.inputBuffer
+                    const canal =
+                        evento
+                            .inputBuffer
+                            .getChannelData(0);
+
+
+                    // Hay que copiarlo porque el
+                    // AudioBuffer se reutiliza.
+
+                    const copia =
+                        new Float32Array(
+                            canal.length
                         );
+
+
+                    copia.set(
+                        canal
+                    );
+
+
+                    fragmentosAudio.push(
+                        copia
+                    );
+
+
+                    muestrasGrabadas +=
+                        copia.length;
 
                 }
 
                 catch (error) {
 
                     console.error(
-                        "Error enviando audio:",
+                        "Error guardando audio:",
                         error
                     );
                 }
@@ -1219,7 +1243,7 @@ async function prepararAudio() {
 
 
 // ======================================================
-// CREAR RECOGNIZER PARA CADA DICTADO
+// CREAR RECOGNIZER
 // ======================================================
 
 function crearRecognizer() {
@@ -1264,23 +1288,14 @@ function crearRecognizer() {
         );
 
 
-    // ==========================================
-    // PARCIAL
-    // ==========================================
+    // Los parciales ahora ocurren DESPUÉS
+    // de soltar. No los mostramos.
 
     recognizer.on(
 
         "partialresult",
 
         mensaje => {
-
-            if (
-                !escuchando
-            ) {
-
-                return;
-            }
-
 
             const parcial =
                 mensaje
@@ -1297,33 +1312,17 @@ function crearRecognizer() {
             }
 
 
-            // MUY IMPORTANTE:
-            // guardamos lo que estamos viendo.
-
             ultimoParcial =
                 parcial.trim();
 
 
-            dictado.textContent =
-                ultimoParcial;
-
-
-            if (
-                miniTexto
-            ) {
-
-                miniTexto.textContent =
-                    "🎙️ “" +
-                    ultimoParcial +
-                    "”";
-            }
+            console.log(
+                "PARCIAL POST:",
+                ultimoParcial
+            );
         }
     );
 
-
-    // ==========================================
-    // RESULTADO
-    // ==========================================
 
     recognizer.on(
 
@@ -1350,28 +1349,10 @@ function crearRecognizer() {
                 texto.trim();
 
 
-            // Mientras seguimos apretando,
-            // solamente lo guardamos.
-            // Procesamos al SOLTAR.
-
-            if (
-                escuchando
-            ) {
-
-                dictado.textContent =
-                    ultimoResultado;
-
-
-                if (
-                    miniTexto
-                ) {
-
-                    miniTexto.textContent =
-                        "🎙️ “" +
-                        ultimoResultado +
-                        "”";
-                }
-            }
+            console.log(
+                "RESULTADO POST:",
+                ultimoResultado
+            );
         }
     );
 
@@ -1379,6 +1360,258 @@ function crearRecognizer() {
     return true;
 }
 
+
+// ======================================================
+// CONVERTIR PCM A AUDIOBUFFER
+// ======================================================
+
+function crearAudioBufferDesdePCM(
+    datos
+) {
+
+    const buffer =
+        audioContext
+            .createBuffer(
+                1,
+                datos.length,
+                audioContext.sampleRate
+            );
+
+
+    buffer
+        .getChannelData(0)
+        .set(
+            datos
+        );
+
+
+    return buffer;
+}
+
+
+// ======================================================
+// PROCESAR AUDIO GRABADO
+// ======================================================
+
+async function procesarAudioGrabado() {
+
+    if (
+        fragmentosAudio.length === 0 ||
+        muestrasGrabadas === 0
+    ) {
+
+        return "";
+    }
+
+
+    if (
+        !crearRecognizer()
+    ) {
+
+        return "";
+    }
+
+
+    // ==========================================
+    // UNIR FRAGMENTOS
+    // ==========================================
+
+    const pcm =
+        new Float32Array(
+            muestrasGrabadas
+        );
+
+
+    let offset = 0;
+
+
+    for (
+        const fragmento
+        of fragmentosAudio
+    ) {
+
+        pcm.set(
+            fragmento,
+            offset
+        );
+
+
+        offset +=
+            fragmento.length;
+    }
+
+
+    console.log(
+        "🎧 Audio grabado:",
+        (
+            pcm.length /
+            audioContext.sampleRate
+        ).toFixed(2),
+        "s"
+    );
+
+
+    // ==========================================
+    // MANDAR A VOSK EN BLOQUES
+    // ==========================================
+
+    const TAM_BLOQUE =
+        8192;
+
+
+    for (
+        let inicio = 0;
+        inicio < pcm.length;
+        inicio += TAM_BLOQUE
+    ) {
+
+        const fin =
+            Math.min(
+                inicio +
+                TAM_BLOQUE,
+
+                pcm.length
+            );
+
+
+        const bloque =
+            pcm.slice(
+                inicio,
+                fin
+            );
+
+
+        const audioBuffer =
+            crearAudioBufferDesdePCM(
+                bloque
+            );
+
+
+        recognizer.acceptWaveform(
+            audioBuffer
+        );
+
+
+        // Cada algunos bloques dejamos que
+        // Android actualice la interfaz.
+
+        if (
+            inicio > 0 &&
+            inicio %
+            (
+                TAM_BLOQUE *
+                8
+            ) === 0
+        ) {
+
+            await new Promise(
+
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        0
+                    )
+            );
+        }
+    }
+
+
+    // ==========================================
+    // SILENCIO FINAL
+    // ==========================================
+
+    // Ayuda a Vosk a entender que terminó
+    // la frase.
+
+    const silencio =
+        new Float32Array(
+
+            Math.round(
+
+                audioContext.sampleRate *
+                0.45
+
+            )
+        );
+
+
+    recognizer.acceptWaveform(
+
+        crearAudioBufferDesdePCM(
+            silencio
+        )
+    );
+
+
+    // ==========================================
+    // ESPERAR RESULTADO DEL WORKER
+    // ==========================================
+
+    let anterior =
+        "";
+
+    let estable =
+        0;
+
+
+    for (
+        let i = 0;
+        i < 24;
+        i++
+    ) {
+
+        await new Promise(
+
+            resolve =>
+                setTimeout(
+                    resolve,
+                    50
+                )
+        );
+
+
+        const actual =
+            (
+                ultimoResultado ||
+                ultimoParcial ||
+                ""
+            ).trim();
+
+
+        if (
+            actual &&
+            actual === anterior
+        ) {
+
+            estable++;
+        }
+
+        else {
+
+            anterior =
+                actual;
+
+            estable =
+                0;
+        }
+
+
+        if (
+            ultimoResultado &&
+            estable >= 2
+        ) {
+
+            break;
+        }
+    }
+
+
+    return (
+        ultimoResultado ||
+        ultimoParcial ||
+        ""
+    ).trim();
+}
 
 // ======================================================
 // MEDIDOR DE VOLUMEN
@@ -1632,7 +1865,7 @@ async function empezarDictado() {
 
 
         // El usuario pudo soltar mientras
-        // aparecía el permiso de Android.
+        // Android pedía permiso.
 
         if (
             !presionado
@@ -1662,19 +1895,18 @@ async function empezarDictado() {
         }
 
 
-        if (
-            !crearRecognizer()
-        ) {
+        // ==========================================
+        // IMPORTANTE
+        //
+        // Acá NO creamos el recognizer.
+        // Solamente empezamos a guardar audio.
+        // ==========================================
 
-            presionado =
-                false;
+        fragmentosAudio =
+            [];
 
-            return;
-        }
-
-
-        escuchando =
-            true;
+        muestrasGrabadas =
+            0;
 
 
         ultimoParcial =
@@ -1682,6 +1914,10 @@ async function empezarDictado() {
 
         ultimoResultado =
             "";
+
+
+        escuchando =
+            true;
 
 
         panelResultado
@@ -1719,8 +1955,11 @@ async function empezarDictado() {
         }
 
 
+        // Ya no mostramos texto reconocido
+        // mientras se está hablando.
+
         dictado.textContent =
-            "Escuchando...";
+            "Grabando...";
 
 
         resultadoFinal.textContent =
@@ -1732,7 +1971,7 @@ async function empezarDictado() {
         ) {
 
             miniTexto.textContent =
-                "🎙️ Escuchando...";
+                "🎙️ Grabando...";
         }
 
 
@@ -1785,31 +2024,16 @@ async function terminarDictado() {
     }
 
 
-    /*
-        IMPORTANTE:
+    // ==========================================
+    // DETENER GRABACIÓN
+    // ==========================================
 
-        Guardamos el último texto ANTES
-        de cambiar estados o eliminar
-        recognizer.
-
-        Si la pantalla decía:
-
-        "Castro cuatro"
-
-        entonces eso mismo se procesa.
-    */
-
-    const textoCapturado =
-        (
-            ultimoResultado ||
-            ultimoParcial ||
-            dictado.textContent ||
-            ""
-        ).trim();
-
+    // Al ponerlo en false, onaudioprocess
+    // deja inmediatamente de guardar audio.
 
     escuchando =
         false;
+
 
     procesando =
         true;
@@ -1827,13 +2051,14 @@ async function terminarDictado() {
             temporizadorGrabacion
         );
 
+
         temporizadorGrabacion =
             null;
     }
 
 
     // ==========================================
-    // VOLUMEN
+    // ANIMACIÓN DE VOLUMEN
     // ==========================================
 
     if (
@@ -1843,6 +2068,7 @@ async function terminarDictado() {
         cancelAnimationFrame(
             animacionVolumen
         );
+
 
         animacionVolumen =
             null;
@@ -1871,7 +2097,7 @@ async function terminarDictado() {
 
 
     // ==========================================
-    // BOTONES
+    // RESTAURAR BOTONES
     // ==========================================
 
     botonMicrofono
@@ -1901,8 +2127,16 @@ async function terminarDictado() {
     }
 
 
+    // ==========================================
+    // AHORA SÍ PROCESAMOS
+    // ==========================================
+
+    dictado.textContent =
+        "Procesando audio...";
+
+
     resultadoFinal.textContent =
-        "⏳ Procesando...";
+        "⏳ Reconociendo...";
 
 
     if (
@@ -1910,106 +2144,123 @@ async function terminarDictado() {
     ) {
 
         miniTexto.textContent =
-            "⏳ Procesando...";
+            "⏳ Reconociendo...";
     }
-
-
-    /*
-        Esperamos apenas 120 ms.
-
-        NO esperamos un nuevo resultado de Vosk,
-        porque ya tenemos guardado el parcial
-        que el usuario vio en pantalla.
-    */
-
-    await new Promise(
-        resolve =>
-            setTimeout(
-                resolve,
-                120
-            )
-    );
-
-
-    console.log(
-        "Último parcial:",
-        ultimoParcial
-    );
-
-    console.log(
-        "Último resultado:",
-        ultimoResultado
-    );
-
-    console.log(
-        "Texto a procesar:",
-        textoCapturado
-    );
-
-
-    // ==========================================
-    // PROCESAR
-    // ==========================================
-
-    if (
-        textoCapturado &&
-        textoCapturado !==
-            "Escuchando..."
-    ) {
-
-        dictado.textContent =
-            textoCapturado;
-
-
-        procesarDictado(
-            textoCapturado
-        );
-
-    }
-
-    else {
-
-        mostrarError(
-            "No reconocí lo que dijiste."
-        );
-    }
-
-
-    // ==========================================
-    // ELIMINAR SOLO EL RECOGNIZER
-    //
-    // El micrófono y AudioContext quedan vivos.
-    // ==========================================
-
-    if (
-        recognizer
-    ) {
-
-        try {
-
-            recognizer.remove();
-
-        }
-
-        catch (error) {
-
-            console.warn(
-                "No se pudo eliminar recognizer:",
-                error
-            );
-        }
-
-
-        recognizer =
-            null;
-    }
-
-
-    procesando =
-        false;
 
 
     actualizarMiniEstado();
+
+
+    try {
+
+        /*
+         * ESTA ES LA DIFERENCIA IMPORTANTE.
+         *
+         * Durante la grabación Vosk no hizo nada.
+         *
+         * Recién ahora:
+         *
+         * 1. creamos el recognizer
+         * 2. unimos el audio
+         * 3. lo mandamos a Vosk
+         * 4. esperamos el texto
+         */
+
+        const textoCapturado =
+            await procesarAudioGrabado();
+
+
+        console.log(
+            "Texto a procesar:",
+            textoCapturado
+        );
+
+
+        if (
+            textoCapturado
+        ) {
+
+            dictado.textContent =
+                textoCapturado;
+
+
+            procesarDictado(
+                textoCapturado
+            );
+
+        }
+
+        else {
+
+            mostrarError(
+                "No reconocí lo que dijiste."
+            );
+        }
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Error procesando audio grabado:",
+            error
+        );
+
+
+        mostrarError(
+            "No pude procesar el audio."
+        );
+    }
+
+    finally {
+
+        // ==========================================
+        // DESTRUIR SOLO EL RECOGNIZER
+        // ==========================================
+
+        // El micrófono y AudioContext quedan
+        // abiertos para que la próxima grabación
+        // empiece instantáneamente.
+
+        if (
+            recognizer
+        ) {
+
+            try {
+
+                recognizer.remove();
+
+            }
+
+            catch (error) {
+
+                console.warn(
+                    "No se pudo eliminar recognizer:",
+                    error
+                );
+            }
+
+
+            recognizer =
+                null;
+        }
+
+
+        // Liberar el audio grabado.
+
+        fragmentosAudio =
+            [];
+
+        muestrasGrabadas =
+            0;
+
+
+        procesando =
+            false;
+
+
+        actualizarMiniEstado();
+    }
 }
 
 
@@ -2185,9 +2436,12 @@ function procesarDictado(texto) {
     /*
         Buscamos desde el final.
 
+        Ejemplos:
+
         Castro cuatro
         Berrino tres
         Rollet cuatro
+        Paira seis
         Banic Baena ocho
     */
 
@@ -2238,7 +2492,7 @@ function procesarDictado(texto) {
 
 
     // ==================================================
-    // SACAR NOTA
+    // SACAR LA NOTA
     // ==================================================
 
     palabras.splice(
@@ -2264,7 +2518,7 @@ function procesarDictado(texto) {
 
 
     // ==================================================
-    // LIMPIAR
+    // LIMPIAR PALABRAS
     // ==================================================
 
     const palabrasDichas =
@@ -2294,7 +2548,7 @@ function procesarDictado(texto) {
 
 
     // ==================================================
-    // CANDIDATOS
+    // GENERAR CANDIDATOS
     // ==================================================
 
     const candidatos =
@@ -2381,7 +2635,7 @@ function procesarDictado(texto) {
                 }
 
 
-                // BONUS EXACTO
+                // BONUS POR COINCIDENCIA FONÉTICA EXACTA
 
                 let bonusExacto =
                     0;
@@ -2423,8 +2677,20 @@ function procesarDictado(texto) {
 
 
                 /*
-                    Apellido domina la decisión.
-                */
+                 * El apellido domina la decisión.
+                 *
+                 * Esto es importante porque normalmente
+                 * vas a decir:
+                 *
+                 * "Berrino tres"
+                 *
+                 * o
+                 *
+                 * "Sofia Paira seis"
+                 *
+                 * y no queremos que un nombre parecido
+                 * le gane a un apellido muy parecido.
+                 */
 
                 let score =
 
@@ -2459,6 +2725,9 @@ function procesarDictado(texto) {
                         mejorApellidoIndividual
                     );
 
+
+                // Si el apellido es muy claro,
+                // reforzamos mucho ese candidato.
 
                 if (
                     fuerzaApellido >=
@@ -2897,6 +3166,15 @@ botonCopiar.addEventListener(
             return;
         }
 
+
+        /*
+         * MUY IMPORTANTE:
+         *
+         * conservamos las líneas vacías.
+         *
+         * Así podés pegar directamente
+         * toda la columna en Mi Escuela Digital.
+         */
 
         const texto =
             alumnos

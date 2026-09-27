@@ -1392,28 +1392,36 @@ function crearAudioBufferDesdePCM(
 // ======================================================
 // PROCESAR AUDIO GRABADO
 // ======================================================
-
 async function procesarAudioGrabado() {
 
     if (
         fragmentosAudio.length === 0 ||
         muestrasGrabadas === 0
     ) {
-
-        return "";
-    }
-
-
-    if (
-        !crearRecognizer()
-    ) {
+        console.warn(
+            "No hay audio grabado"
+        );
 
         return "";
     }
 
 
     // ==========================================
-    // UNIR FRAGMENTOS
+    // CREAR RECOGNIZER
+    // ==========================================
+
+    if (!crearRecognizer()) {
+
+        console.error(
+            "No se pudo crear recognizer"
+        );
+
+        return "";
+    }
+
+
+    // ==========================================
+    // UNIR TODO EL AUDIO
     // ==========================================
 
     const pcm =
@@ -1435,28 +1443,106 @@ async function procesarAudioGrabado() {
             offset
         );
 
-
         offset +=
             fragmento.length;
     }
 
 
+    const duracion =
+        pcm.length /
+        audioContext.sampleRate;
+
+
     console.log(
         "🎧 Audio grabado:",
-        (
-            pcm.length /
-            audioContext.sampleRate
-        ).toFixed(2),
-        "s"
+        duracion.toFixed(2),
+        "segundos"
+    );
+
+
+    console.log(
+        "🎧 Muestras:",
+        pcm.length
+    );
+
+
+    console.log(
+        "🎧 Sample rate:",
+        audioContext.sampleRate
     );
 
 
     // ==========================================
-    // MANDAR A VOSK EN BLOQUES
+    // COMPROBAR QUE REALMENTE HAY AUDIO
     // ==========================================
 
+    let maximo = 0;
+
+
+    for (
+        let i = 0;
+        i < pcm.length;
+        i++
+    ) {
+
+        const valor =
+            Math.abs(
+                pcm[i]
+            );
+
+
+        if (
+            valor > maximo
+        ) {
+
+            maximo =
+                valor;
+        }
+    }
+
+
+    console.log(
+        "🔊 Pico audio:",
+        maximo
+    );
+
+
+    if (
+        maximo < 0.001
+    ) {
+
+        console.warn(
+            "Audio prácticamente silencioso"
+        );
+
+        return "";
+    }
+
+
+    // ==========================================
+    // PROCESAR EN BLOQUES PEQUEÑOS
+    // ==========================================
+
+    /*
+        En PC podemos alimentar Vosk muy rápido.
+
+        En Android no conviene.
+
+        Le vamos entregando aproximadamente
+        250 ms de audio cada vez.
+    */
+
     const TAM_BLOQUE =
-        8192;
+        Math.round(
+            audioContext.sampleRate *
+            0.25
+        );
+
+
+    console.log(
+        "📦 Tamaño bloque:",
+        TAM_BLOQUE
+    );
 
 
     for (
@@ -1467,9 +1553,7 @@ async function procesarAudioGrabado() {
 
         const fin =
             Math.min(
-                inicio +
-                TAM_BLOQUE,
-
+                inicio + TAM_BLOQUE,
                 pcm.length
             );
 
@@ -1481,47 +1565,49 @@ async function procesarAudioGrabado() {
             );
 
 
-        const audioBuffer =
+        const buffer =
             crearAudioBufferDesdePCM(
                 bloque
             );
 
 
         recognizer.acceptWaveform(
-            audioBuffer
+            buffer
         );
 
 
-        // Cada algunos bloques dejamos que
-        // Android actualice la interfaz.
+        /*
+            MUY IMPORTANTE EN CELULAR.
 
-        if (
-            inicio > 0 &&
-            inicio %
-            (
-                TAM_BLOQUE *
-                8
-            ) === 0
-        ) {
+            Dejamos respirar al Worker de Vosk
+            después de cada bloque.
+        */
 
-            await new Promise(
+        await new Promise(
 
-                resolve =>
-                    setTimeout(
-                        resolve,
-                        0
-                    )
-            );
-        }
+            resolve =>
+                setTimeout(
+                    resolve,
+                    15
+                )
+        );
     }
 
 
     // ==========================================
-    // SILENCIO FINAL
+    // AGREGAR SILENCIO FINAL
     // ==========================================
 
-    // Ayuda a Vosk a entender que terminó
-    // la frase.
+    /*
+        Le damos bastante silencio para obligar
+        a Vosk a cerrar:
+
+        "Ward tres"
+    */
+
+    const DURACION_SILENCIO =
+        0.8;
+
 
     const silencio =
         new Float32Array(
@@ -1529,88 +1615,142 @@ async function procesarAudioGrabado() {
             Math.round(
 
                 audioContext.sampleRate *
-                0.45
 
+                DURACION_SILENCIO
             )
         );
 
 
-    recognizer.acceptWaveform(
-
-        crearAudioBufferDesdePCM(
-            silencio
-        )
-    );
-
-
-    // ==========================================
-    // ESPERAR RESULTADO DEL WORKER
-    // ==========================================
-
-    let anterior =
-        "";
-
-    let estable =
-        0;
+    const BLOQUE_SILENCIO =
+        Math.round(
+            audioContext.sampleRate *
+            0.20
+        );
 
 
     for (
-        let i = 0;
-        i < 24;
-        i++
+        let inicio = 0;
+        inicio < silencio.length;
+        inicio += BLOQUE_SILENCIO
     ) {
+
+        const fin =
+            Math.min(
+
+                inicio +
+                BLOQUE_SILENCIO,
+
+                silencio.length
+            );
+
+
+        const bloque =
+            silencio.slice(
+                inicio,
+                fin
+            );
+
+
+        recognizer.acceptWaveform(
+
+            crearAudioBufferDesdePCM(
+                bloque
+            )
+        );
+
 
         await new Promise(
 
             resolve =>
                 setTimeout(
                     resolve,
-                    50
+                    20
                 )
         );
-
-
-        const actual =
-            (
-                ultimoResultado ||
-                ultimoParcial ||
-                ""
-            ).trim();
-
-
-        if (
-            actual &&
-            actual === anterior
-        ) {
-
-            estable++;
-        }
-
-        else {
-
-            anterior =
-                actual;
-
-            estable =
-                0;
-        }
-
-
-        if (
-            ultimoResultado &&
-            estable >= 2
-        ) {
-
-            break;
-        }
     }
 
 
-    return (
-        ultimoResultado ||
-        ultimoParcial ||
-        ""
-    ).trim();
+    // ==========================================
+    // ESPERAR RESULTADO
+    // ==========================================
+
+    /*
+        No asumimos que el Worker respondió
+        inmediatamente.
+
+        En Android puede tardar bastante más
+        que en PC.
+    */
+
+
+    console.log(
+        "⏳ Esperando resultado Vosk..."
+    );
+
+
+    const inicioEspera =
+        Date.now();
+
+
+    const MAX_ESPERA =
+        5000;
+
+
+    while (
+        Date.now() -
+        inicioEspera <
+        MAX_ESPERA
+    ) {
+
+        if (
+            ultimoResultado
+        ) {
+
+            console.log(
+                "✅ Resultado final:",
+                ultimoResultado
+            );
+
+
+            return ultimoResultado;
+        }
+
+
+        await new Promise(
+
+            resolve =>
+                setTimeout(
+                    resolve,
+                    100
+                )
+        );
+    }
+
+
+    // ==========================================
+    // FALLBACK AL PARCIAL
+    // ==========================================
+
+    if (
+        ultimoParcial
+    ) {
+
+        console.log(
+            "⚠️ Usando parcial:",
+            ultimoParcial
+        );
+
+
+        return ultimoParcial;
+    }
+
+
+    console.warn(
+        "❌ Vosk no produjo texto"
+    );
+
+
+    return "";
 }
 
 // ======================================================

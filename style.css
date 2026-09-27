@@ -1,0 +1,1318 @@
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --fondo: #f6f7f9;
+    --superficie: #ffffff;
+    --superficie-suave: #f8fafc;
+
+    --texto: #172033;
+    --texto-secundario: #697386;
+    --borde: #e6e9ef;
+
+    --azul: #3568e8;
+    --azul-oscuro: #2854c7;
+    --azul-suave: #edf3ff;
+
+    --rojo: #e5484d;
+    --rojo-suave: #fff1f1;
+
+    --verde: #16855b;
+    --verde-suave: #eefbf5;
+
+    --radio: 18px;
+}
+
+html {
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    margin: 0;
+
+    background:
+        linear-gradient(
+            180deg,
+            #fafbfc 0,
+            var(--fondo) 280px
+        );
+
+    color: var(--texto);
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    -webkit-font-smoothing: antialiased;
+}
+
+
+/* =========================================================
+   CONTENEDOR
+   ========================================================= */
+
+.contenedor {
+    width: min(860px, calc(100% - 32px));
+
+    margin:
+        38px auto
+        100px;
+}
+
+
+/* =========================================================
+   TÍTULO
+   ========================================================= */
+
+h1 {
+    margin:
+        0 0 6px;
+
+    text-align: center;
+
+    font-size: 30px;
+    font-weight: 720;
+    letter-spacing: -0.7px;
+
+    color: #151b2b;
+}
+
+.subtitulo {
+    margin:
+        0 0 28px;
+
+    text-align: center;
+
+    color: var(--texto-secundario);
+
+    font-size: 15px;
+}
+
+
+/* =========================================================
+   PANELES
+   ========================================================= */
+
+.panel {
+    margin-bottom: 16px;
+
+    padding: 22px;
+
+    background:
+        rgba(255,255,255,.94);
+
+    border:
+        1px solid var(--borde);
+
+    border-radius:
+        var(--radio);
+
+    box-shadow:
+        0 2px 5px rgba(16,24,40,.025),
+        0 8px 24px rgba(16,24,40,.035);
+}
+
+
+/* =========================================================
+   BOTONES GENERALES
+   ========================================================= */
+
+button {
+    border: 0;
+
+    font: inherit;
+
+    cursor: pointer;
+
+    transition:
+        transform .16s ease,
+        box-shadow .16s ease,
+        background .16s ease,
+        opacity .16s ease;
+
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+button:active:not(:disabled) {
+    transform: scale(.98);
+}
+
+button:disabled {
+    cursor: default;
+}
+
+
+/* =========================================================
+   BOTÓN SECUNDARIO
+   ========================================================= */
+
+.botonSecundario {
+    width: 100%;
+
+    padding: 13px 16px;
+
+    background:
+        #f0f2f5;
+
+    border:
+        1px solid #e5e8ed;
+
+    border-radius:
+        12px;
+
+    color:
+        #303747;
+
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.botonSecundario:hover {
+    background:
+        #e9edf2;
+}
+
+
+/* =========================================================
+   MICRÓFONO PRINCIPAL
+   ========================================================= */
+
+#microfono {
+    --nivel: 0;
+
+    position: relative;
+
+    width: 112px;
+    height: 112px;
+
+    margin:
+        34px auto 0;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    color: white;
+
+    background:
+        linear-gradient(
+            145deg,
+            #4778ef,
+            #315fd9
+        );
+
+    box-shadow:
+        0 12px 30px
+            rgba(49,95,217,.25),
+
+        inset 0 1px 1px
+            rgba(255,255,255,.28);
+
+    touch-action: none;
+
+    isolation: isolate;
+}
+
+
+/* Aro interior/reactivo */
+
+#microfono::before {
+    content: "";
+
+    position: absolute;
+
+    inset: -9px;
+
+    border:
+        2px solid
+        rgba(53,104,232,.18);
+
+    border-radius: inherit;
+
+    transform:
+        scale(
+            calc(
+                1 +
+                var(--nivel) * .16
+            )
+        );
+
+    opacity:
+        calc(
+            .35 +
+            var(--nivel) * .65
+        );
+
+    transition:
+        transform .07s linear;
+
+    pointer-events: none;
+
+    z-index: -1;
+}
+
+
+/* Halo exterior */
+
+#microfono::after {
+    content: "";
+
+    position: absolute;
+
+    inset: -20px;
+
+    border-radius: inherit;
+
+    background:
+        rgba(53,104,232,.055);
+
+    transform:
+        scale(
+            calc(
+                .92 +
+                var(--nivel) * .25
+            )
+        );
+
+    opacity:
+        calc(
+            .25 +
+            var(--nivel) * .55
+        );
+
+    transition:
+        transform .07s linear;
+
+    pointer-events: none;
+
+    z-index: -2;
+}
+
+
+#microfono:hover:not(:disabled) {
+    transform:
+        translateY(-2px);
+
+    box-shadow:
+        0 16px 36px
+            rgba(49,95,217,.30),
+
+        inset 0 1px 1px
+            rgba(255,255,255,.3);
+}
+
+
+#microfono:active:not(:disabled) {
+    transform:
+        scale(.95);
+}
+
+
+/* =========================================================
+   ICONO MICRÓFONO
+   ========================================================= */
+
+.icono-microfono {
+    width: 44px;
+    height: 44px;
+
+    pointer-events: none;
+
+    filter:
+        drop-shadow(
+            0 2px 3px
+            rgba(0,0,0,.12)
+        );
+}
+
+
+/* =========================================================
+   MICRÓFONO GRABANDO
+   ========================================================= */
+
+#microfono.activo {
+    background:
+        linear-gradient(
+            145deg,
+            #f05257,
+            #dc3d43
+        );
+
+    transform:
+        scale(
+            calc(
+                .97 +
+                var(--nivel) * .07
+            )
+        );
+
+    box-shadow:
+        0 0
+            calc(
+                18px +
+                var(--nivel) * 30px
+            )
+            rgba(229,72,77,.28),
+
+        0 12px 30px
+            rgba(229,72,77,.25);
+}
+
+
+#microfono.activo::before {
+    border-color:
+        rgba(229,72,77,.40);
+
+    transform:
+        scale(
+            calc(
+                1.06 +
+                var(--nivel) * .22
+            )
+        );
+}
+
+
+#microfono.activo::after {
+    background:
+        rgba(229,72,77,.09);
+
+    transform:
+        scale(
+            calc(
+                1 +
+                var(--nivel) * .34
+            )
+        );
+}
+
+
+#microfono:disabled {
+    opacity: .35;
+
+    filter:
+        grayscale(.35);
+
+    box-shadow: none;
+}
+
+
+/* =========================================================
+   TEXTO DEBAJO DEL MICRÓFONO
+   ========================================================= */
+
+.ayuda-microfono {
+    margin-top: 20px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 4px;
+
+    text-align: center;
+}
+
+.ayuda-microfono strong {
+    color:
+        #303747;
+
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.ayuda-microfono span {
+    color:
+        #8a93a3;
+
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   ESTADO WHISPER
+   ========================================================= */
+
+#estadoModelo {
+    width: fit-content;
+
+    margin:
+        16px auto 0;
+
+    padding:
+        5px 10px;
+
+    border-radius:
+        999px;
+
+    background:
+        #f2f4f7;
+
+    color:
+        #7a8495;
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   RESULTADO
+   ========================================================= */
+
+.resultado {
+    min-height: 138px;
+
+    padding:
+        24px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    text-align: center;
+
+    transition:
+        background .2s ease,
+        border .2s ease;
+}
+
+
+.resultado .titulo {
+    color:
+        #929baa;
+
+    font-size: 11px;
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing:
+        1.4px;
+}
+
+
+#dictado {
+    min-height: 30px;
+
+    margin-top: 10px;
+
+    color:
+        #222a39;
+
+    font-size: 23px;
+    font-weight: 650;
+
+    letter-spacing:
+        -.3px;
+}
+
+
+#resultadoFinal {
+    margin-top: 9px;
+
+    color:
+        var(--texto-secundario);
+
+    font-size: 16px;
+    font-weight: 600;
+}
+
+
+/* OK */
+
+.resultado.ok {
+    background:
+        var(--verde-suave);
+
+    border-color:
+        #ccefe0;
+}
+
+.resultado.ok #resultadoFinal {
+    color:
+        var(--verde);
+}
+
+
+/* ERROR */
+
+.resultado.error {
+    background:
+        #fff7ed;
+
+    border-color:
+        #fed7aa;
+}
+
+.resultado.error #resultadoFinal {
+    color:
+        #c65a16;
+}
+
+
+/* =========================================================
+   CONTADOR
+   ========================================================= */
+
+#contador {
+    margin:
+        20px 0 12px;
+
+    color:
+        #7c8595;
+
+    text-align: center;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   TABLA
+   ========================================================= */
+
+.tablaContenedor {
+    overflow-x: auto;
+
+    border:
+        1px solid var(--borde);
+
+    border-radius:
+        14px;
+
+    background:
+        white;
+}
+
+
+table {
+    width: 100%;
+
+    border-collapse:
+        collapse;
+
+    background:
+        transparent;
+}
+
+
+th,
+td {
+    padding:
+        12px 14px;
+
+    border-bottom:
+        1px solid #edf0f3;
+
+    text-align:
+        left;
+}
+
+
+th {
+    background:
+        #f8f9fb;
+
+    color:
+        #7b8493;
+
+    font-size:
+        11px;
+
+    font-weight:
+        700;
+
+    text-transform:
+        uppercase;
+
+    letter-spacing:
+        .6px;
+}
+
+
+td {
+    color:
+        #303747;
+
+    font-size:
+        14px;
+}
+
+
+tbody tr {
+    transition:
+        background .15s ease;
+}
+
+
+tbody tr:hover {
+    background:
+        #fafbfc;
+}
+
+
+tbody tr:last-child td {
+    border-bottom:
+        0;
+}
+
+
+/* NOTA CARGADA */
+
+tr.asignado {
+    background:
+        #f2fbf7;
+}
+
+tr.asignado:hover {
+    background:
+        #ecf9f3;
+}
+
+
+/* DESAPROBADO */
+
+tr.desaprobado {
+    background:
+        #fff5f5;
+}
+
+tr.desaprobado:hover {
+    background:
+        #ffefef;
+}
+
+
+td.nota {
+    width:
+        90px;
+}
+
+
+/* =========================================================
+   INPUT NOTA
+   ========================================================= */
+
+.inputNota {
+    width:
+        60px;
+
+    padding:
+        7px 5px;
+
+    border:
+        1px solid #dce0e6;
+
+    border-radius:
+        9px;
+
+    outline:
+        none;
+
+    background:
+        white;
+
+    color:
+        #222936;
+
+    text-align:
+        center;
+
+    font:
+        inherit;
+
+    font-weight:
+        650;
+
+    transition:
+        border .15s ease,
+        box-shadow .15s ease;
+}
+
+
+.inputNota:focus {
+    border-color:
+        #8baaf5;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(53,104,232,.10);
+}
+
+
+/* =========================================================
+   SIN ALUMNOS
+   ========================================================= */
+
+#sinAlumnos {
+    padding:
+        38px 20px;
+
+    color:
+        #a0a7b3;
+
+    text-align:
+        center;
+
+    font-size:
+        14px;
+}
+
+
+/* =========================================================
+   MICRÓFONO FLOTANTE
+   ========================================================= */
+
+.microfono-flotante {
+    --nivel: 0;
+
+    position:
+        fixed;
+
+    right:
+        22px;
+
+    bottom:
+        22px;
+
+    width:
+        58px;
+
+    height:
+        58px;
+
+    padding:
+        0;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    border-radius:
+        50%;
+
+    background:
+        #273142;
+
+    color:
+        white;
+
+    font-size:
+        24px;
+
+    box-shadow:
+        0 8px 24px
+        rgba(15,23,42,.22);
+
+    opacity:
+        0;
+
+    pointer-events:
+        none;
+
+    transform:
+        translateY(12px)
+        scale(.94);
+
+    transition:
+        opacity .2s ease,
+        transform .2s ease,
+        background .2s ease,
+        box-shadow .2s ease;
+
+    touch-action:
+        none;
+
+    z-index:
+        1001;
+}
+
+
+.microfono-flotante.visible {
+    opacity:
+        1;
+
+    pointer-events:
+        auto;
+
+    transform:
+        translateY(0)
+        scale(
+            calc(
+                1 +
+                var(--nivel) * .10
+            )
+        );
+}
+
+
+.microfono-flotante.activo {
+    background:
+        var(--rojo);
+
+    box-shadow:
+        0 0 0
+            calc(
+                4px +
+                var(--nivel) * 11px
+            )
+            rgba(229,72,77,.13),
+
+        0 8px 24px
+            rgba(15,23,42,.22);
+}
+
+
+/* =========================================================
+   MINI ESTADO INFERIOR
+   ========================================================= */
+
+#miniEstado {
+    position:
+        fixed;
+
+    left:
+        50%;
+
+    bottom:
+        22px;
+
+    width:
+        min(
+            440px,
+            calc(100% - 100px)
+        );
+
+    min-height:
+        54px;
+
+    padding:
+        8px 12px;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    gap:
+        10px;
+
+    background:
+        rgba(24,31,43,.94);
+
+    backdrop-filter:
+        blur(16px);
+
+    -webkit-backdrop-filter:
+        blur(16px);
+
+    border:
+        1px solid
+        rgba(255,255,255,.08);
+
+    border-radius:
+        15px;
+
+    color:
+        white;
+
+    box-shadow:
+        0 10px 30px
+        rgba(0,0,0,.18);
+
+    opacity:
+        0;
+
+    visibility:
+        hidden;
+
+    pointer-events:
+        none;
+
+    transform:
+        translate(-50%, 12px);
+
+    transition:
+        opacity .2s ease,
+        transform .2s ease,
+        visibility .2s;
+
+    z-index:
+        1000;
+}
+
+
+#miniEstado.visible {
+    opacity:
+        1;
+
+    visibility:
+        visible;
+
+    transform:
+        translate(-50%, 0);
+}
+
+
+#miniMicrofono {
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    gap:
+        7px;
+
+    flex-shrink:
+        0;
+
+    color:
+        #fda4a7;
+
+    font-size:
+        11px;
+
+    font-weight:
+        700;
+}
+
+
+.miniPunto {
+    width:
+        8px;
+
+    height:
+        8px;
+
+    border-radius:
+        50%;
+
+    background:
+        #f05257;
+
+    animation:
+        miniPulso
+        1.4s infinite;
+}
+
+
+@keyframes miniPulso {
+
+    0% {
+        box-shadow:
+            0 0 0 0
+            rgba(240,82,87,.4);
+    }
+
+    70% {
+        box-shadow:
+            0 0 0 7px
+            rgba(240,82,87,0);
+    }
+
+    100% {
+        box-shadow:
+            0 0 0 0
+            rgba(240,82,87,0);
+    }
+}
+
+
+#miniTexto {
+    min-width:
+        0;
+
+    overflow:
+        hidden;
+
+    color:
+        #f8fafc;
+
+    white-space:
+        nowrap;
+
+    text-overflow:
+        ellipsis;
+
+    font-size:
+        13px;
+
+    font-weight:
+        500;
+
+    flex:
+        1;
+}
+
+
+/* =========================================================
+   CELULAR
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    body {
+        background:
+            #f6f7f9;
+    }
+
+
+    .contenedor {
+        width:
+            calc(100% - 20px);
+
+        margin:
+            18px auto
+            100px;
+    }
+
+
+    h1 {
+        font-size:
+            25px;
+
+        letter-spacing:
+            -.5px;
+    }
+
+
+    .subtitulo {
+        margin-bottom:
+            20px;
+
+        padding:
+            0 12px;
+
+        font-size:
+            13px;
+    }
+
+
+    .panel {
+        padding:
+            17px;
+
+        border-radius:
+            16px;
+
+        margin-bottom:
+            12px;
+
+        box-shadow:
+            0 2px 12px
+            rgba(16,24,40,.035);
+    }
+
+
+    /* Micrófono sigue siendo protagonista */
+
+    #microfono {
+        width:
+            96px;
+
+        height:
+            96px;
+
+        margin-top:
+            28px;
+    }
+
+
+    .icono-microfono {
+        width:
+            39px;
+
+        height:
+            39px;
+    }
+
+
+    .ayuda-microfono {
+        margin-top:
+            17px;
+    }
+
+
+    .ayuda-microfono span {
+        display:
+            none;
+    }
+
+
+    #estadoModelo {
+        margin-top:
+            13px;
+    }
+
+
+    .resultado {
+        min-height:
+            120px;
+
+        padding:
+            18px 14px;
+    }
+
+
+    #dictado {
+        font-size:
+            20px;
+    }
+
+
+    #resultadoFinal {
+        font-size:
+            15px;
+    }
+
+
+    #contador {
+        margin:
+            16px 0 10px;
+    }
+
+
+    th,
+    td {
+        padding:
+            11px 10px;
+    }
+
+
+    th {
+        font-size:
+            10px;
+    }
+
+
+    td {
+        font-size:
+            13px;
+    }
+
+
+    td.nota {
+        width:
+            72px;
+    }
+
+
+    .inputNota {
+        width:
+            54px;
+
+        font-size:
+            15px;
+    }
+
+
+    /* Barra flotante */
+
+    #miniEstado {
+        left:
+            12px;
+
+        right:
+            82px;
+
+        bottom:
+            calc(
+                14px +
+                env(safe-area-inset-bottom)
+            );
+
+        width:
+            auto;
+
+        min-height:
+            52px;
+
+        transform:
+            translateY(12px);
+
+        border-radius:
+            14px;
+    }
+
+
+    #miniEstado.visible {
+        transform:
+            translateY(0);
+    }
+
+
+    .microfono-flotante {
+        width:
+            56px;
+
+        height:
+            56px;
+
+        right:
+            14px;
+
+        bottom:
+            calc(
+                14px +
+                env(safe-area-inset-bottom)
+            );
+
+        font-size:
+            23px;
+    }
+}
+
+
+/* =========================================================
+   PANTALLAS MUY CHICAS
+   ========================================================= */
+
+@media (max-width: 380px) {
+
+    .contenedor {
+        width:
+            calc(100% - 14px);
+    }
+
+    .panel {
+        padding:
+            14px;
+    }
+
+    h1 {
+        font-size:
+            23px;
+    }
+
+    #miniMicrofono {
+        display:
+            none;
+    }
+}

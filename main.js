@@ -3298,6 +3298,231 @@ console.log(
         return;
     }
 
+    // ==========================================
+// DESEMPATE: APELLIDOS REPETIDOS
+// ==========================================
+
+const apellidoGanador =
+    normalizar(
+        primero.alumno.apellido
+    );
+
+
+// Buscamos todos los alumnos que tengan
+// exactamente el mismo apellido.
+
+const mismoApellido =
+    candidatos.filter(
+        candidato =>
+            normalizar(
+                candidato.alumno.apellido
+            ) === apellidoGanador
+    );
+
+
+if (mismoApellido.length > 1) {
+
+    console.log(
+        "👥 Apellido repetido:",
+        apellidoGanador
+    );
+
+    console.table(
+        mismoApellido.map(
+            c => ({
+                alumno:
+                    c.alumno.apellido +
+                    " " +
+                    c.alumno.nombre,
+
+                scoreNombre:
+                    c.scoreNombre
+                        .toFixed(3),
+
+                scoreTotal:
+                    c.score
+                        .toFixed(3)
+            })
+        )
+    );
+
+
+    // ======================================
+    // RANKEAR SOLAMENTE POR NOMBRE
+    // ======================================
+
+    const desempate =
+        mismoApellido
+            .map(
+                candidato => {
+
+                    const nombre =
+                        normalizar(
+                            candidato.alumno.nombre
+                        );
+
+                    const palabrasNombre =
+                        nombre
+                            .split(/\s+/)
+                            .filter(Boolean);
+
+
+                    // Comparamos las palabras dichas
+                    // contra el nombre.
+
+                    const scoreNombre =
+                        compararConjuntoPalabras(
+                            palabrasDichas,
+                            palabrasNombre
+                        );
+
+
+                    // Además buscamos la mejor
+                    // coincidencia individual.
+
+                    const variantesDichas =
+                        generarVariantesPalabras(
+                            palabrasDichas
+                        );
+
+
+                    const variantesNombre =
+                        generarVariantesPalabras(
+                            palabrasNombre
+                        );
+
+
+                    let mejorNombreIndividual =
+                        0;
+
+
+                    for (
+                        const dicha
+                        of variantesDichas
+                    ) {
+
+                        for (
+                            const nom
+                            of variantesNombre
+                        ) {
+
+                            mejorNombreIndividual =
+                                Math.max(
+                                    mejorNombreIndividual,
+                                    similitudPalabra(
+                                        dicha,
+                                        nom
+                                    )
+                                );
+                        }
+                    }
+
+
+                    // En el desempate el NOMBRE
+                    // pasa a ser lo importante.
+
+                    const scoreDesempate =
+                        scoreNombre * 0.65 +
+                        mejorNombreIndividual * 0.35;
+
+
+                    return {
+                        ...candidato,
+
+                        scoreNombreDesempate:
+                            scoreNombre,
+
+                        mejorNombreIndividual,
+
+                        scoreDesempate
+                    };
+                }
+            )
+            .sort(
+                (a, b) =>
+                    b.scoreDesempate -
+                    a.scoreDesempate
+            );
+
+
+    const ganador =
+        desempate[0];
+
+    const segundoNombre =
+        desempate[1];
+
+
+    console.log(
+        "🏆 Desempate por nombre:",
+        ganador.alumno,
+        ganador.scoreDesempate
+    );
+
+
+    // ======================================
+    // ¿DIJO REALMENTE EL NOMBRE?
+    // ======================================
+
+    const diferenciaNombre =
+        segundoNombre
+
+            ? ganador.scoreDesempate -
+              segundoNombre.scoreDesempate
+
+            : 1;
+
+
+    const nombreSuficiente =
+        ganador.scoreNombreDesempate >= 0.50 ||
+
+        ganador.mejorNombreIndividual >= 0.72;
+
+
+    // Si solamente dijo "Gómez",
+    // los nombres tendrán scores bajos.
+    //
+    // No elegimos arbitrariamente.
+
+    if (
+        !nombreSuficiente ||
+        diferenciaNombre < 0.08
+    ) {
+
+        const nombres =
+            mismoApellido
+                .map(
+                    c =>
+                        c.alumno.nombre
+                )
+                .join(" / ");
+
+
+        mostrarError(
+            "Hay varios " +
+            primero.alumno.apellido +
+            ": " +
+            nombres +
+            ". Decí también el nombre."
+        );
+
+
+        return;
+    }
+
+
+    // ======================================
+    // ASIGNAR AL GANADOR DEL DESEMPATE
+    // ======================================
+
+    asignarNota(
+        ganador.index,
+        nota,
+        comentario
+    );
+
+
+    return;
+}
 
     asignarNota(
         primero.index,

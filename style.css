@@ -788,19 +788,21 @@ td.nota {
         fixed;
 
     right:
-        22px;
+        12px;
 
     bottom:
-        22px;
+        52px;
 
-    width:
-        58px;
+        width: 72px;
+    height: 72px;
 
-    height:
-        58px;
+    min-width: 82px;
+    min-height: 82px;
+
+    font-size: 30px;
 
     padding:
-        0;
+        1.5rem;
 
     display:
         flex;
@@ -902,8 +904,8 @@ td.nota {
 
     width:
         min(
-            440px,
-            calc(100% - 100px)
+            500px,
+            calc(100% - 80px)
         );
 
     min-height:
@@ -1278,7 +1280,7 @@ td.nota {
 
         bottom:
             calc(
-                14px +
+                10px +
                 env(safe-area-inset-bottom)
             );
 

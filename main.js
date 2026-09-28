@@ -5,6 +5,15 @@
 const WHISPER_URL =
     "https://notas-whisper.laperladegranvalor.workers.dev/";
 
+    // =====================================================
+// COLA DE AUDIOS PARA WHISPER
+// =====================================================
+
+const colaAudios = [];
+
+let procesandoCola = false;
+
+let contadorAudios = 0;
 
 // ======================================================
 // ELEMENTOS
@@ -34,6 +43,41 @@ botonCopiarComentarios
         copiarComentarios
     );
 
+    function actualizarEstadoCola() {
+
+    const pendientes =
+        colaAudios.length;
+
+
+    if (
+        procesandoCola &&
+        pendientes > 0
+    ) {
+
+        miniTexto.textContent =
+            `Procesando · ${pendientes} en cola`;
+
+        return;
+    }
+
+
+    if (procesandoCola) {
+
+        miniTexto.textContent =
+            "Procesando dictado…";
+
+        return;
+    }
+
+
+    if (pendientes > 0) {
+
+        miniTexto.textContent =
+            `${pendientes} en cola`;
+
+        return;
+    }
+}
 
 async function copiarComentarios() {
 
@@ -1563,94 +1607,103 @@ function obtenerContextoAlumnos() {
 // ======================================================
 // ENVIAR AUDIO A WHISPER
 // ======================================================
+async function procesarAudioDeCola(trabajo) {
 
-async function procesarAudioGrabado() {
+    const chunks = trabajo.audio;
 
-    if (
-        fragmentosAudio.length === 0 ||
-        muestrasGrabadas === 0
-    ) {
-
-        console.warn(
-            "No hay audio grabado"
+    if (!chunks || chunks.length === 0) {
+        throw new Error(
+            "El audio de la cola está vacío."
         );
-
-        return "";
     }
 
 
     // ==========================================
-    // UNIR PCM
+    // 1. UNIR FRAGMENTOS PCM
     // ==========================================
+
+    let totalMuestras = 0;
+
+    for (const chunk of chunks) {
+        totalMuestras += chunk.length;
+    }
+
 
     const pcm =
         new Float32Array(
-            muestrasGrabadas
+            totalMuestras
         );
+
 
     let offset = 0;
 
-    for (
-        const fragmento
-        of fragmentosAudio
-    ) {
+    for (const chunk of chunks) {
 
         pcm.set(
-            fragmento,
+            chunk,
             offset
         );
 
-        offset +=
-            fragmento.length;
+        offset += chunk.length;
     }
 
 
+    // ==========================================
+    // 2. SAMPLE RATE
+    // ==========================================
+
+    const sampleRate =
+        audioContext?.sampleRate ||
+        16000;
+
+
+    const duracion =
+        pcm.length /
+        sampleRate;
+
+
     console.log(
-        "🎧 Audio grabado:",
-        (
-            pcm.length /
-            audioContext.sampleRate
-        ).toFixed(2),
+        `🎧 Audio ${trabajo.id}:`,
+        duracion.toFixed(2),
         "segundos"
     );
 
 
     console.log(
         "🎧 Sample rate:",
-        audioContext.sampleRate
+        sampleRate
     );
 
 
+    if (duracion < 0.15) {
+
+        throw new Error(
+            "El audio fue demasiado corto."
+        );
+    }
+
+
     // ==========================================
-    // WAV
+    // 3. PCM → WAV
     // ==========================================
 
-    const wav =
+    const wavBlob =
         convertirPCMawav(
             pcm,
-            audioContext.sampleRate
+            sampleRate
         );
 
 
     console.log(
-        "📦 WAV:",
-        wav.size,
+        `📦 WAV ${trabajo.id}:`,
+        wavBlob.size,
         "bytes"
     );
 
 
     // ==========================================
-    // FORMDATA
+    // 4. CREAR FORMDATA
     // ==========================================
-
-    /*
-        Mandamos dos cosas:
-
-        audio = archivo WAV
-
-        alumnos = JSON con TODOS los
-        nombres y apellidos del curso.
-    */
 
     const formData =
         new FormData();
@@ -1658,14 +1711,16 @@ async function procesarAudioGrabado() {
 
     formData.append(
         "audio",
-        wav,
-        "dictado.wav"
+        wavBlob,
+        `dictado-${trabajo.id}.wav`
     );
 
 
+    // Mandamos también los alumnos
+    // para darle contexto al Worker.
+
     formData.append(
         "alumnos",
-
         JSON.stringify(
             obtenerContextoAlumnos()
         )
@@ -1673,37 +1728,50 @@ async function procesarAudioGrabado() {
 
 
     console.log(
-        "👥 Contexto enviado a Whisper:",
-        obtenerContextoAlumnos()
+        `☁️ Enviando audio ${trabajo.id} a Whisper`
     );
 
 
-    // ==========================================
-    // WHISPER
-    // ==========================================
+    const inicio =
+        performance.now();
 
-    console.time(
-        "Whisper"
-    );
 
+    // ==========================================
+    // 5. ENVIAR AL WORKER
+    // ==========================================
 
     const respuesta =
         await fetch(
             WHISPER_URL,
             {
-                method:
-                    "POST",
+                method: "POST",
 
-                body:
-                    formData
+                // MUY IMPORTANTE:
+                // NO poner Content-Type acá.
+                //
+                // El navegador genera automáticamente:
+                //
+                // multipart/form-data;
+                // boundary=....
+
+                body: formData
             }
         );
 
 
-    console.timeEnd(
-        "Whisper"
+    console.log(
+        `Whisper ${trabajo.id}:`,
+        (
+            performance.now() -
+            inicio
+        ).toFixed(0),
+        "ms"
     );
 
+
+    // ==========================================
+    // 6. LEER RESPUESTA
+    // ==========================================
 
     let datos;
 
@@ -1715,48 +1783,84 @@ async function procesarAudioGrabado() {
 
     }
 
-    catch {
+    catch (error) {
+
+        const texto =
+            await respuesta.text()
+                .catch(() => "");
 
         throw new Error(
-            "El servidor no devolvió una respuesta válida."
+            texto ||
+            "Whisper devolvió una respuesta inválida."
         );
     }
 
 
     console.log(
-        "☁️ Respuesta Whisper:",
+        `☁️ Respuesta Whisper ${trabajo.id}:`,
         datos
     );
 
 
+    // ==========================================
+    // 7. CONTROLAR ERRORES
+    // ==========================================
+
     if (
         !respuesta.ok ||
-        !datos.ok
+        datos?.ok === false
     ) {
 
         throw new Error(
-            datos.error ||
-            "Error de Whisper"
+            datos?.error ||
+            `Error HTTP ${respuesta.status}`
         );
     }
 
 
+    // ==========================================
+    // 8. OBTENER TRANSCRIPCIÓN
+    // ==========================================
+
     const texto =
-        (
-            datos.text ||
+        String(
+            datos?.text ??
+            datos?.texto ??
+            datos?.transcription ??
             ""
-        ).trim();
+        )
+        .trim();
+
+
+    if (!texto) {
+
+        throw new Error(
+            "Whisper no devolvió texto."
+        );
+    }
 
 
     console.log(
-        "📝 Whisper:",
+        `📝 Dictado ${trabajo.id}:`,
+        texto
+    );
+
+
+    // ==========================================
+    // 9. MOSTRAR Y PROCESAR
+    // ==========================================
+
+    dictado.textContent =
+        texto;
+
+
+    procesarDictado(
         texto
     );
 
 
     return texto;
 }
-
 
 // ======================================================
 // MEDIDOR DE VOLUMEN
@@ -2100,8 +2204,6 @@ async function empezarDictado() {
                 );
 
 
-            botonMicrofonoFlotante.textContent =
-                "🎙️";
         }
 
 
@@ -2151,7 +2253,163 @@ async function empezarDictado() {
     }
 }
 
+async function procesarCola() {
 
+    // Ya hay otro audio procesándose.
+    if (procesandoCola) {
+        return;
+    }
+
+
+    // No queda nada.
+    if (colaAudios.length === 0) {
+
+        actualizarEstadoCola();
+
+        return;
+    }
+
+
+    procesandoCola =
+        true;
+
+
+    const trabajo =
+        colaAudios.shift();
+
+
+    actualizarEstadoCola();
+
+
+    console.log(
+        `☁️ Procesando audio ${trabajo.id}`
+    );
+
+
+    try {
+
+        await procesarAudioDeCola(
+            trabajo
+        );
+
+    } catch (error) {
+
+        console.error(
+            `Error procesando audio ${trabajo.id}:`,
+            error
+        );
+
+
+        mostrarError(
+            "Error procesando un dictado."
+        );
+
+    } finally {
+
+        procesandoCola =
+            false;
+
+
+        actualizarEstadoCola();
+
+
+        // Procesamos automáticamente
+        // el siguiente.
+
+        procesarCola();
+    }
+}
+
+function encolarAudioGrabado() {
+
+    if (
+        !fragmentosAudio ||
+        fragmentosAudio.length === 0
+    ) {
+        console.warn(
+            "⚠️ No hay audio para encolar"
+        );
+
+        return false;
+    }
+
+
+    const id =
+        ++contadorAudios;
+
+
+    // ==========================================
+    // COPIAR AUDIO
+    // ==========================================
+    //
+    // Cada grabación necesita su propia copia.
+    // Así podemos limpiar fragmentosAudio y
+    // empezar otra grabación inmediatamente.
+
+    const audio =
+        fragmentosAudio.map(
+            fragmento =>
+                new Float32Array(
+                    fragmento
+                )
+        );
+
+
+    const totalMuestras =
+        muestrasGrabadas;
+
+
+    // ==========================================
+    // AGREGAR A LA COLA
+    // ==========================================
+
+    colaAudios.push({
+
+        id,
+
+        audio,
+
+        muestrasGrabadas:
+            totalMuestras
+
+    });
+
+
+    console.log(
+        `📥 Audio ${id} agregado a la cola`
+    );
+
+    console.log(
+        `📚 Audios pendientes: ${colaAudios.length}`
+    );
+
+
+    // ==========================================
+    // IMPORTANTE:
+    // LIBERAMOS EL BUFFER ACTUAL
+    // ==========================================
+
+    fragmentosAudio =
+        [];
+
+    muestrasGrabadas =
+        0;
+
+
+    actualizarEstadoCola();
+
+
+    // No usamos await.
+    //
+    // Whisper empieza a trabajar en segundo
+    // plano mientras nosotros podemos volver
+    // a grabar.
+
+    procesarCola();
+
+
+    return true;
+}
 // ======================================================
 // TERMINAR DICTADO
 // ======================================================
@@ -2268,8 +2526,6 @@ async function terminarDictado() {
             );
 
 
-        botonMicrofonoFlotante.textContent =
-            "🎤";
     }
 
 
@@ -2303,69 +2559,80 @@ async function terminarDictado() {
 
     try {
 
-        const textoCapturado =
-            await procesarAudioGrabado();
+    const agregado =
+        encolarAudioGrabado();
 
 
-        console.log(
-            "Texto a procesar:",
-            textoCapturado
-        );
-
-
-        if (
-            textoCapturado
-        ) {
-
-            dictado.textContent =
-                textoCapturado;
-
-
-            procesarDictado(
-                textoCapturado
-            );
-
-        }
-
-        else {
-
-            mostrarError(
-                "No reconocí lo que dijiste."
-            );
-        }
-
-    }
-
-    catch (error) {
-
-        console.error(
-            "Error procesando audio:",
-            error
-        );
-
+    if (!agregado) {
 
         mostrarError(
-            error?.message ||
-            "No pude procesar el audio."
+            "No se grabó audio."
         );
 
+        return;
     }
 
-    finally {
 
-        fragmentosAudio =
-            [];
-
-        muestrasGrabadas =
-            0;
+    console.log(
+        "🎧 Audio enviado a la cola"
+    );
 
 
-        procesando =
-            false;
+    dictado.textContent =
+        "Audio en cola";
 
 
-        actualizarMiniEstado();
+    resultadoFinal.textContent =
+        "✓ Podés seguir dictando";
+
+
+    if (miniTexto) {
+
+        miniTexto.textContent =
+            "✓ Audio en cola";
     }
+
+
+    miniMensajePersistente =
+        true;
+
+
+    actualizarMiniEstado();
+
+}
+
+catch (error) {
+
+    console.error(
+        "Error agregando audio a la cola:",
+        error
+    );
+
+
+    mostrarError(
+        error?.message ||
+        "No pude guardar el audio."
+    );
+
+}
+
+finally {
+
+    // NO limpiamos fragmentosAudio acá.
+    //
+    // encolarAudioGrabado() ya hizo una copia
+    // y limpió los buffers.
+
+
+    // Esto libera inmediatamente
+    // el micrófono para otro dictado.
+
+    procesando =
+        false;
+
+
+    actualizarMiniEstado();
+}
 }
 
 
